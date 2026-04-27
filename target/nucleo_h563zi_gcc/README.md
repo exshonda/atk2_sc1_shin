@@ -228,11 +228,61 @@ ST-Link 経由で NUCLEO-H563ZI を接続:
 - ポートはホスト PC の OS で `STMicroelectronics STLink Virtual COM Port`
   として認識されるものを指定．設定: `115200, 8, N, 1`，`No Flow Control`．
 
-### よくある問題
+### Microsoft Store 版 Python が STM32CubeIDE で動作しない件
+
+STM32CubeIDE のビルドでは `make: *** [Makefile:NNN: cfg1_out.c] Error -1`
+で停止することがある．これは **Microsoft Store 版 Python の AppX
+サンドボックス制約** が原因で，PATH 設定では回避できない．
+
+**現象** (実機で再現):
+
+| python.exe のパス | 種別 | msys2 から | STM32CubeIDE から |
+|---|---|---|---|
+| `C:\Users\<user>\AppData\Local\Microsoft\WindowsApps\python.exe` | App Execution Alias (0 byte reparse point) | ○ 動作 | × `Error -1` |
+| `C:\Users\<user>\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.13_…\python.exe` | MS Store 実体 (`sys.executable`) | ○ 動作 | × `Error -1` |
+| `C:\sw\ST\STEdgeAI\<ver>\Utilities\windows\python.exe` 等 通常の実行ファイル | ○ 動作 | ○ 動作 |
+
+**理由**: Microsoft Store 版 Python は AppX パッケージとしてインストール
+され，実体の `python.exe` も AppX activation context が必要なリパース
+ポイントになっている．msys2 の bash は AppX 対応のプロセストークンを
+継承するため動作するが，STM32CubeIDE 同梱の busybox `sh.exe` /
+`make.exe` は AppX 非対応のため `CreateProcess` が `Error -1` で失敗する．
+**PATH への追加では解決しない**．
+
+**対処** (いずれか):
+
+1. **python.org からインストーラ版を導入** (推奨．恒久解決)
+   - <https://www.python.org/downloads/> からインストール
+   - 既定パス: `C:\Users\<user>\AppData\Local\Programs\Python\Python313\python.exe`
+   - インストール時 "Add to PATH" にチェックを入れれば PATH 経由でも動く
+
+2. **同梱されている別の Python を使う**
+   - STMicroelectronics 製品 (STEdgeAI 等) を入れていれば
+     `C:\sw\ST\STEdgeAI\<ver>\Utilities\windows\python.exe` が使える
+     (動作確認: Python 3.9.13)
+   - インストーラ版でなく zip 展開した portable python でも可
+
+3. **`make USE_PY_CFG=0` で C++ 版 cfg.exe にフォールバック**
+   - 別途 [cfg-mingw-static-1_9_6.zip](https://www.toppers.jp/download.cgi/cfg-mingw-static-1_9_6.zip)
+     を取得して `cfg/cfg/cfg.exe` に配置 (Project README の
+     セットアップ 3. 参照)
+
+**STM32CubeIDE での PYTHON 変数設定**:
+
+`sample` プロジェクトを右クリック → `Properties` → `C/C++ Build` →
+`Environment` → `Add...`:
+
+- Name: `PYTHON`
+- Value: `C:\Users\<user>\AppData\Local\Programs\Python\Python313\python.exe`
+  (上記対処 1 の場合) または `C:\sw\ST\STEdgeAI\<ver>\Utilities\windows\python.exe`
+  (対処 2 の場合)
+
+OK → `Project` → `Clean...` → `Build`．
+
+### よくある問題 (その他)
 
 | 症状 | 対処 |
 |---|---|
-| `make: *** [Makefile:NNN: cfg1_out.c] Error -1` (STM32CubeIDE 上で発生) | STM32CubeIDE のビルド環境では `python` が PATH に無い場合が多い．Project Properties → C/C++ Build → Environment で変数 `PYTHON` に **python.exe の絶対パス** (例: `C:\Users\<user>\AppData\Local\Programs\Python\Python313\python.exe`) を設定．Microsoft Store 経由で入れた場合は `C:\Users\<user>\AppData\Local\Microsoft\WindowsApps\python.exe`．設定後 Project → Clean → Build． |
 | `cfg.py` 実行時に `python: command not found` (msys make) | `make PYTHON=python3 ...` を指定．もしくは `make USE_PY_CFG=0` で C++ 版 `cfg.exe` にフォールバック |
 | `Python interpreter not found` (Makefile が make 開始直後にエラーで停止) | Makefile が `python` / `python3` / `py -3` のいずれも検出できなかった．`make PYTHON=<絶対パス>` で明示指定するか，Python 3.7+ をインストールして PATH に追加 |
 | `cfg.exe` が見つからない | デフォルトは Python 版なので通常発生しない．`USE_PY_CFG=0` を指定したのに発生する場合は `cfg/cfg/cfg.exe` の存在確認 (本リポジトリには非同梱．README.md セットアップ参照) |
