@@ -1,0 +1,109 @@
+#
+#  TOPPERS ATK2
+#      Toyohashi Open Platform for Embedded Real-Time Systems
+#      Automotive Kernel Version 2
+#
+#  Copyright (C) 2008-2017 by Center for Embedded Computing Systems
+#              Graduate School of Information Science, Nagoya Univ., JAPAN
+#
+#  上記著作権者は，以下の(1)〜(4)の条件を満たす場合に限り，本ソフトウェ
+#  ア（本ソフトウェアを改変したものを含む．以下同じ）を使用・複製・改
+#  変・再配布（以下，利用と呼ぶ）することを無償で許諾する．
+#  (1) 本ソフトウェアをソースコードの形で利用する場合には，上記の著作
+#      権表示，この利用条件および下記の無保証規定が，そのままの形でソー
+#      スコード中に含まれていること．
+#  (2) 本ソフトウェアを，ライブラリ形式など，他のソフトウェア開発に使
+#      用できる形で再配布する場合には，再配布に伴うドキュメント（利用
+#      者マニュアルなど）に，上記の著作権表示，この利用条件および下記
+#      の無保証規定を掲載すること．
+#  (3) 本ソフトウェアを，機器に組み込むなど，他のソフトウェア開発に使
+#      用できない形で再配布する場合には，次のいずれかの条件を満たすこ
+#      と．
+#    (a) 再配布に伴うドキュメント（利用者マニュアルなど）に，上記の著
+#        作権表示，この利用条件および下記の無保証規定を掲載すること．
+#    (b) 再配布の形態を，別に定める方法によって，TOPPERSプロジェクトに
+#        報告すること．
+#  (4) 本ソフトウェアの利用により直接的または間接的に生じるいかなる損
+#      害からも，上記著作権者およびTOPPERSプロジェクトを免責すること．
+#      また，本ソフトウェアのユーザまたはエンドユーザからのいかなる理
+#      由に基づく請求からも，上記著作権者およびTOPPERSプロジェクトを
+#      免責すること．
+#
+#  本ソフトウェアは，AUTOSAR（AUTomotive Open System ARchitecture）仕
+#  様に基づいている．上記の許諾は，AUTOSARの知的財産権を許諾するもので
+#  はない．AUTOSARは，AUTOSAR仕様に基づいたソフトウェアを商用目的で利
+#  用する者に対して，AUTOSARパートナーになることを求めている．
+#
+#  本ソフトウェアは，無保証で提供されているものである．上記著作権者お
+#  よびTOPPERSプロジェクトは，本ソフトウェアに関して，特定の使用目的
+#  に対する適合性も含めて，いかなる保証も行わない．また，本ソフトウェ
+#  アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
+#  の責任を負わない．
+#
+
+#
+#  Makefile のターゲット依存部（NUCLEO_H563ZI_GCC用）
+#
+
+#
+#  ボード名，チップ名，プロセッサ名，開発環境名の定義
+#
+TARGET = nucleo_h563zi_gcc
+BOARD  = nucleo_h563zi
+CHIP   = stm32h5xx_stm32cube
+PRC    = arm_m
+TOOL   = gcc
+
+#
+#  FPU を使用するか
+#    FPU_NO_PRESERV     : FPU 有効．OS は s16-s31 を保存/復帰しない．
+#    FPU_NO_LAZYSTACKING: FPU 有効．Lazy Stacking 無効．OS が s16-s31 を保存/復帰．
+#    FPU_LAZYSTACKING   : FPU 有効．Lazy Stacking 有効．OS が s16-s31 を保存/復帰．
+#    (未指定)            : FPU 不使用 (soft float)．
+#
+FPU_USAGE = FPU_LAZYSTACKING
+
+#
+#  STM32Cube ターゲット依存ファイル群
+#  ASP3 から取り込んだ stm32h5xx_hal_conf.h, system_stm32h5xx.c,
+#  systemclock_config.c を $(TARGETDIR)/stm32fcube/ 以下に配置
+#
+STM32CUBE_TARGET_DIR = $(TARGETDIR)/stm32fcube
+
+#
+#  コンパイルオプション
+#
+INCLUDES := $(INCLUDES) -I$(TARGETDIR) -I$(STM32CUBE_TARGET_DIR)
+CDEFS    := $(CDEFS) -DSTM32H563xx -DINIT_MSP -DUSE_HAL_DRIVER
+COPTS    := $(COPTS) -ffunction-sections -fdata-sections
+LDFLAGS  := $(LDFLAGS) -Wl,--gc-sections
+
+#
+#  カーネルに関する定義
+#
+KERNEL_DIR     := $(KERNEL_DIR) $(TARGETDIR) $(STM32CUBE_TARGET_DIR)
+KERNEL_ASMOBJS := $(KERNEL_ASMOBJS)
+KERNEL_COBJS   := $(KERNEL_COBJS) target_config.o target_hw_counter.o \
+                  systemclock_config.o system_stm32h5xx.o
+
+#
+#  オフセットファイル生成のための定義
+#
+OFFSET_TF := $(TARGETDIR)/target_offset.tf
+
+#
+#  依存関係の定義
+#
+Os_Lcfg.timestamp: $(TARGETDIR)/target.tf
+$(OBJFILE): $(TARGETDIR)/target_check.tf
+offset.h: $(TARGETDIR)/target_offset.tf
+
+#
+#  リンカスクリプトの定義
+#
+LDSCRIPT = $(TARGETDIR)/stm32h563zi.ld
+
+#
+#  チップ依存部のインクルード
+#
+include $(SRCDIR)/arch/$(PRC)_$(TOOL)/$(CHIP)/Makefile.chip
