@@ -232,8 +232,10 @@ ST-Link 経由で NUCLEO-H563ZI を接続:
 
 | 症状 | 対処 |
 |---|---|
-| `cfg.py` 実行時に `python: command not found` | `make PYTHON=python3 ...` を指定．もしくは `make USE_PY_CFG=0` で C++ 版 `cfg.exe` にフォールバック |
-| `cfg.exe` が見つからない | デフォルトは Python 版なので通常発生しない．`USE_PY_CFG=0` を指定したのに発生する場合は `atk2-sc1_nios2/cfg/cfg/cfg.exe` の存在確認 |
+| `make: *** [Makefile:NNN: cfg1_out.c] Error -1` (STM32CubeIDE 上で発生) | STM32CubeIDE のビルド環境では `python` が PATH に無い場合が多い．Project Properties → C/C++ Build → Environment で変数 `PYTHON` に **python.exe の絶対パス** (例: `C:\Users\<user>\AppData\Local\Programs\Python\Python313\python.exe`) を設定．Microsoft Store 経由で入れた場合は `C:\Users\<user>\AppData\Local\Microsoft\WindowsApps\python.exe`．設定後 Project → Clean → Build． |
+| `cfg.py` 実行時に `python: command not found` (msys make) | `make PYTHON=python3 ...` を指定．もしくは `make USE_PY_CFG=0` で C++ 版 `cfg.exe` にフォールバック |
+| `Python interpreter not found` (Makefile が make 開始直後にエラーで停止) | Makefile が `python` / `python3` / `py -3` のいずれも検出できなかった．`make PYTHON=<絶対パス>` で明示指定するか，Python 3.7+ をインストールして PATH に追加 |
+| `cfg.exe` が見つからない | デフォルトは Python 版なので通常発生しない．`USE_PY_CFG=0` を指定したのに発生する場合は `cfg/cfg/cfg.exe` の存在確認 (本リポジトリには非同梱．README.md セットアップ参照) |
 | `Cannot create temporary file in C:\WINDOWS\` | (msys make でのみ発生) `make TMP="C:/Users/<user>/AppData/Local/Temp" TEMP=...` で TMP を明示．STM32CubeIDE では発生しない |
 | 並列ビルドで `Os_Cfg.h: No such file or directory` | 並列依存設定に問題が無いか確認 (ATK2 では Makefile に order-only 依存を入れて対応済み) |
 | シリアルに何も出ない | ST-Link Virtual COM Port のドライバ最新版を入れる．[ST 公式](https://www.st.com/en/development-tools/stsw-link009.html) |

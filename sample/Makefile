@@ -144,8 +144,24 @@ endif
 #  USE_PY_CFG=0          : configure で指定した cfg バイナリ
 #
 USE_PY_CFG ?= 1
-PYTHON ?= python
 ifeq ($(USE_PY_CFG),1)
+  # Python インタープリタの自動検出．`make PYTHON=<path>` で上書き可能．
+  # STM32CubeIDE では Project Properties -> C/C++ Build -> Environment に
+  # PYTHON 変数を追加 (python.exe の絶対パス) すれば良い．
+  ifndef PYTHON
+    ifneq ($(shell python --version 2>/dev/null),)
+      PYTHON := python
+    else ifneq ($(shell python3 --version 2>/dev/null),)
+      PYTHON := python3
+    else ifneq ($(shell py -3 --version 2>/dev/null),)
+      PYTHON := py -3
+    else
+      $(error Python interpreter not found. Install Python 3.7+ or set \
+PYTHON=<absolute path to python.exe>. For STM32CubeIDE: Project Properties \
+-> C/C++ Build -> Environment, add PYTHON with full path to python.exe \
+(e.g. C:/Users/<user>/AppData/Local/Programs/Python/Python313/python.exe))
+    endif
+  endif
   CFG = $(PYTHON) $(SRCDIR)/cfg/cfg_py/cfg.py
 else
   CFG = @(CFG)
