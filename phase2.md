@@ -71,6 +71,155 @@ main からの差分 commit:
 
 ---
 
+## ユーザー作業 (Phase 2-A) — Smart Configurator baseline 生成
+
+> **本節はユーザーが手作業で実施する必須タスク**．Claude では代替不能 (e²
+> studio Smart Configurator は GUI 必須．`rasc.exe` 等の CLI は同梱なし)．
+> Phase 2-B 骨格 (commit `9c7561e`) は完了済み．本節を実施した後，Phase 3
+> またはセッション再開で Claude に「Phase 2-A 完了．後続作業を継続」と
+> 依頼する．
+
+### A. 前提状態の確認
+
+実施前に以下を確認 (どれも commit `9c7561e` 時点で満たされているはず):
+
+- [ ] ブランチ `feat/ek_ra6m5_phase1` 上にいる
+- [ ] `target/ek_ra6m5_gcc/` 一式が存在する
+- [ ] `target/ek_ra6m5_gcc/ra_cfg/` `ra_gen/` は **README.md のみ**で，他に
+      ファイルが無い (まだ Smart Configurator 出力を入れていない)
+
+### B. e² studio Smart Configurator で baseline 生成
+
+下記は本ファイル §実施手順 Phase 2-A および
+[`target/ek_ra6m5_gcc/README.md`](target/ek_ra6m5_gcc/README.md) §3 と同内容．
+要点だけ再掲:
+
+1. **e² studio (2025-07 以降) を起動**．既存ワークスペースとは **別の場所**
+   に新規ワークスペースを作る (本リポジトリ内である必要なし)．
+2. **新規プロジェクト作成**: `File → New → C/C++ Project → Renesas RA C/C++
+   Project`．設定値:
+   - Project Name: `ek_ra6m5_baseline` (任意．**生成元としてのみ使用**)
+   - Board: **EK-RA6M5**
+   - Toolchain: **GCC ARM Embedded**
+   - Device: **R7FA6M5BH3CFC**
+   - Project Type: **Flat (Non-TrustZone) Project**
+   - RTOS: **No RTOS**
+3. **`configuration.xml` を開いて構成**:
+   - **Clocks**: HOCO 20MHz → PLL → ICLK 200MHz, PCLKD = ICLK/2 = 100MHz
+   - **Stacks → New Stack → Driver → Connectivity → r_sci_uart**: `SCI9` を選択
+   - **Stacks → New Stack → Driver → Timers → r_gpt**: `GPT320` (32-bit)，Mode=Free Run
+   - **Stacks → New Stack → Driver → Timers → r_gpt**: `GPT321` (32-bit)，Mode=One-Shot
+   - **Stacks → New Stack → Driver → Input → r_ioport**: デフォルト
+   - **Pins**: `P602=TXD9`, `P603=RXD9` が AF6 (SCI9) に設定されていることを確認
+   - **Properties** タブで各モジュールの Interrupt Priority を確認
+4. **`Generate Project Content`** をクリック．
+5. プロジェクトが一度ビルドできることを e² studio 上で確認 (任意，整合性検証目的)．
+
+### C. 生成物のコピー (本リポジトリへ取込)
+
+生成プロジェクトのワークスペース直下から，下記 3 箇所を本リポジトリへコピー:
+
+| 元 (e² studio ワークスペース内) | 先 (本リポジトリ) |
+|---|---|
+| `<ws>/ek_ra6m5_baseline/ra_cfg/`     全体 (再帰) | `target/ek_ra6m5_gcc/ra_cfg/`       (既存 `README.md` は残す) |
+| `<ws>/ek_ra6m5_baseline/ra_gen/`     全体 (再帰) | `target/ek_ra6m5_gcc/ra_gen/`       (既存 `README.md` は残す) |
+| `<ws>/ek_ra6m5_baseline/configuration.xml`        | `target/ek_ra6m5_gcc/configuration.xml` (新規) |
+
+> **注意**: `script/fsp.ld` `src/` `inc/` `.cproject` 等は **コピーしない**．
+> 本リポジトリは ATK2 が独自にリンカスクリプト・スタートアップを持つ
+> ため．
+
+### D. コピー結果の検証
+
+下記が満たされていることを確認:
+
+- [ ] `target/ek_ra6m5_gcc/ra_cfg/fsp_cfg/bsp/bsp_cfg.h` が存在し，
+      内部に `#define BSP_MCU_GROUP_RA6M5` および `#define BSP_MCU_R7FA6M5BH`
+      が含まれている (chip 層 `Makefile.chip` に `-D` を書かない方針の根拠)
+- [ ] `target/ek_ra6m5_gcc/ra_cfg/fsp_cfg/bsp/bsp_clock_cfg.h` が存在
+- [ ] `target/ek_ra6m5_gcc/ra_gen/common_data.c` `hal_data.c` `pin_data.c`
+      `vector_data.c` `vector_data.h` が存在
+- [ ] `target/ek_ra6m5_gcc/configuration.xml` が存在
+
+### E. INTNO スロット番号の読取り
+
+`target/ek_ra6m5_gcc/ra_gen/vector_data.c` を開き，
+`g_interrupt_event_link_select[]` 配列の並び順から下記イベントの
+スロット番号 (= 配列インデックス) を読み取る:
+
+| FSP イベント名 | 配列インデックス N | 対応 INTNO (= N + 16) |
+|---|---|---|
+| `BSP_PRV_VECTOR_EVENT_SCI9_RXI` (受信割込み) | (記入) | (記入) |
+| `BSP_PRV_VECTOR_EVENT_GPT321_OVF` または GPT321 周期割込み相当 | (記入) | (記入) |
+
+> 配列の **0 番目** に `SCI9_RXI` があれば INTNO=16，**1 番目** なら 17 ...
+> 通常 SCI9 のみ + GPT320 + GPT321 の構成では SCI9_RXI は 0〜2 のいずれか，
+> GPT321_OVF はその次のスロットに割り当てられる．
+
+### F. 後続作業 (Claude に依頼) — 引継メモ
+
+以下の作業は Claude が引き継げる．Phase 3 着手時または別セッション開始
+時に「Phase 2-A 完了．以下を反映して Phase 2-B を仕上げてほしい」と
+INTNO 値を伝える．
+
+下記 6 項目を Claude が更新する:
+
+1. **`target/ek_ra6m5_gcc/target_serial.h`** の `INTNO_SIO`
+   暫定値 `UINT_C(16)` → §E で確認した実値．
+2. **`target/ek_ra6m5_gcc/target_serial.arxml`** の
+   `RxHwSerialInt` の `OsIsrInterruptNumber` `<VALUE>16</VALUE>`
+   → 実値．
+3. **`target/ek_ra6m5_gcc/target_hw_counter.h`** の `GPT321_INTNO`
+   暫定値 `UINT_C(18)` → 実値．
+4. **`target/ek_ra6m5_gcc/target_hw_counter.arxml`** の
+   `C2ISR_for_MAIN_HW_COUNTER` の `OsIsrInterruptNumber` `<VALUE>18</VALUE>`
+   → 実値．
+5. **`target/ek_ra6m5_gcc/Makefile.target`** に下記マクロ定義を追加:
+   - `-DEK_RA6M5_HAVE_VECTOR_DATA` (target_config.c の IELSR 設定ループを有効化)
+   - `-DEK_RA6M5_USE_FSP_PINCFG` (target_config.c の R_IOPORT_Open 呼出を有効化)
+6. **`vector_data.c` 取扱方式**を (a)/(b)/(c) から確定．Claude が試行順
+   ((a) → (b) → (c)) でビルドを試し，最初に通った方式を採用．対応する
+   `Makefile.target` 修正 (例: 方式 (b) なら objcopy ルール追加，方式 (c)
+   なら `r7fa6m5bh.ld` の `/DISCARD/` を本格化) を行う．
+
+### G. コミット責務
+
+- §C のコピー作業は **ユーザー** がコミットする (FSP ベンダ生成物のため)．
+  推奨コミットメッセージ:
+  ```
+  target/ek_ra6m5_gcc: Smart Configurator baseline (FSP 6.1.0) 取込
+
+  e² studio Smart Configurator で生成した ra_cfg/ ra_gen/
+  configuration.xml を取込．構成: Board=EK-RA6M5, ICLK=200MHz,
+  PCLKD=100MHz, SCI9 + GPT320 + GPT321 + IOPORT．
+  ```
+- §F の Claude 作業は別コミットとする (`target/ek_ra6m5_gcc:
+  Phase 2-A 完了に伴う INTNO/Makefile 修正` 等)．
+
+### H. リスクと事前回避
+
+| 症状 | 原因 | 回避策 |
+|---|---|---|
+| 生成物コピー後に `ra_cfg/README.md` `ra_gen/README.md` を上書きしてしまう | コピー時に既存 README を見落とした | `cp` ではなくマージコピー (rsync `--ignore-existing` または手動マージ)．README.md を一旦リポジトリ外に退避 → コピー後に戻す，も可 |
+| EK-RA6M5 のボード Rev 違いで VCOM が SCI9 ではない | EK-RA6M5 v1.0/v2.0 の差異 | ボード silkscreen と [Renesas EK-RA6M5 User's Manual](https://www.renesas.com/en/document/mat/ek-ra6m5-v1-users-manual) で配線確認．異なれば `target_serial.h` `target_config.c` で別 SCI に変更 |
+| Smart Configurator が `BSP_MCU_GROUP_RA6M5` を定義しない | プロジェクトテンプレートで Board=EK-RA6M5 を選び忘れ | プロジェクト再生成．`bsp_cfg.h` を grep で確認 |
+| 生成物に `BSP_TZ_NONSECURE_BUILD` が定義されている | TrustZone Secure/Non-Secure 分割を選択した | プロジェクトを **Flat (Non-TrustZone)** で再生成．本ポートは Non-Secure 単一前提 |
+
+### I. 次セッションで Claude に渡すブリーフ (テンプレート)
+
+```
+Phase 2-A 完了．下記を反映して Phase 2-B を仕上げてほしい．
+- vector_data.c の g_interrupt_event_link_select[] から読取った INTNO:
+  - SCI9_RXI       : N=___ → INTNO=___
+  - GPT321_OVF 相当: N=___ → INTNO=___
+- ra_cfg/ ra_gen/ configuration.xml は commit ___ で取込済．
+  vector_data.c 取扱方式は (a)/(b)/(c) のうち未確定．Claude にビルド
+  試行で確定してもらいたい．
+- 続けて Phase 3 (obj/obj_ek_ra6m5/Makefile 作成) に進んでほしい．
+```
+
+---
+
 ## 目的
 
 EK-RA6M5 ボード固有のターゲット依存部 `target/ek_ra6m5_gcc/` を新規作成し，Phase 1 のチップ依存部と組合せてビルド可能な状態にする．Smart Configurator 生成物 (`ra_cfg/`, `ra_gen/`) の取り込みも本フェーズで完結させる．
