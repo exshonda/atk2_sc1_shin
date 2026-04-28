@@ -1,0 +1,107 @@
+#
+#  TOPPERS ATK2
+#      Toyohashi Open Platform for Embedded Real-Time Systems
+#      Automotive Kernel Version 2
+#
+#  Copyright (C) 2008-2017 by Center for Embedded Computing Systems
+#              Graduate School of Information Science, Nagoya Univ., JAPAN
+#  Copyright (C) 2026 by Center for Embedded Computing Systems
+#              Graduate School of Information Science, Nagoya Univ., JAPAN
+#
+#  上記著作権者は，以下の(1)〜(4)の条件を満たす場合に限り，本ソフトウェ
+#  ア（本ソフトウェアを改変したものを含む．以下同じ）を使用・複製・改
+#  変・再配布（以下，利用と呼ぶ）することを無償で許諾する．
+#
+#  本ソフトウェアは，無保証で提供されているものである．
+#
+
+#
+#  Makefile のチップ依存部（RA6M5 FSP用）
+#
+#  Renesas FSP 6.1.0 を同梱．R7FA6M5BH (EK-RA6M5 搭載) を対象とする．
+#  CPU 共通部分のみここで定義．Smart Configurator が生成する
+#  ra_cfg/, ra_gen/ はターゲット依存部で扱う (Phase 1B 以降)．
+#
+
+#
+#  チップ依存部ディレクトリ名の定義
+#
+CHIPDIR = $(SRCDIR)/arch/$(PRC)_$(TOOL)/$(CHIP)
+
+#
+#  FSP ルートディレクトリ
+#
+FSPDIR = $(CHIPDIR)/fsp
+
+#
+#  コアタイプ
+#
+CORE_TYPE = CORTEX_M33
+
+#
+#  CPU 共通コンパイルオプション
+#  -mfloat-abi / -mfpu は Makefile.prc が FPU_USAGE に応じて付与する．
+#
+COPTS    := $(COPTS) -mcpu=cortex-m33 -mthumb
+LDFLAGS  := $(LDFLAGS) -mcpu=cortex-m33 -mthumb
+CDEFS    := $(CDEFS) -D_RENESAS_RA_ -D_RA_CORE=CM33 -D_RA_ORDINAL=1
+
+#
+#  Cortex-M33 の FPU アーキテクチャ定義 (Makefile.prc が参照)
+#  FPU_ARCH_OPT   : -mfpu に渡す値
+#  FPU_ARCH_MACRO : ソースコード側で参照する判別マクロ名
+#
+FPU_ARCH_OPT   = fpv5-sp-d16
+FPU_ARCH_MACRO = __TARGET_FPU_FPV5_SP
+
+#
+#  ヘッダ・ライブラリ検索パス
+#
+#  FSP ヘッダは fsp/inc/ (API + instances) と fsp/src/bsp/ 以下に分散．
+#  bsp_cfg.h, fsp_cfg.h 等の Smart Configurator 生成ヘッダはターゲット
+#  依存部 (target/ek_ra6m5_gcc/ra_cfg/, ra_gen/) から取り込まれる．
+#
+INCLUDES := $(INCLUDES) -I$(CHIPDIR) \
+            -I$(FSPDIR)/inc \
+            -I$(FSPDIR)/inc/api \
+            -I$(FSPDIR)/inc/instances \
+            -I$(FSPDIR)/src/bsp/cmsis/Device/RENESAS/Include \
+            -I$(FSPDIR)/src/bsp/mcu/all \
+            -I$(FSPDIR)/src/bsp/mcu/ra6m5
+
+COPTS    := $(COPTS) -mlittle-endian
+LDFLAGS  := $(LDFLAGS) -mlittle-endian
+
+#
+#  カーネルに関する定義 (FSP BSP コアソース)
+#
+#  BSP の最小セット．ペリフェラルドライバ (r_sci_uart, r_gpt, r_ioport,
+#  r_icu, r_cgc) はターゲット依存部 Makefile.target で必要に応じて追加する．
+#
+#  FSP の startup.c (cmsis/Device/RENESAS/Source/startup.c) は使わない．
+#  ATK2 共通の arch/arm_m_gcc/common/start.S をリセットエントリとし，
+#  そこから FSP の SystemInit() (system.c) を呼び出す方針．
+#
+KERNEL_DIR     := $(KERNEL_DIR) $(CHIPDIR) \
+                  $(FSPDIR)/src/bsp/mcu/all \
+                  $(FSPDIR)/src/bsp/cmsis/Device/RENESAS/Source
+
+KERNEL_ASMOBJS := $(KERNEL_ASMOBJS)
+KERNEL_COBJS   := $(KERNEL_COBJS) \
+                  bsp_clocks.o \
+                  bsp_common.o \
+                  bsp_delay.o \
+                  bsp_group_irq.o \
+                  bsp_guard.o \
+                  bsp_io.o \
+                  bsp_irq.o \
+                  bsp_macl.o \
+                  bsp_register_protection.o \
+                  bsp_sbrk.o \
+                  bsp_security.o \
+                  system.o
+
+#
+#  プロセッサ依存部のインクルード
+#
+include $(SRCDIR)/arch/$(PRC)_$(TOOL)/common/Makefile.prc
