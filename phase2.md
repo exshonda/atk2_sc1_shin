@@ -1,5 +1,76 @@
 # Phase 2: ターゲット依存部の作成
 
+## 新セッション着手手順 (Handoff)
+
+> 本節は **後続セッション (別の Claude / 開発者) が Phase 2 を引き継ぐ際**
+> の起点情報．Phase 1 までの全コンテキストをここに集約してある．以下を
+> 上から順に確認すれば cold start でも進められる．
+
+### 0-1. ブランチと commit 履歴
+
+リポジトリ: `c:/home/proj/edge-ai/embcode/atk2_ra6m5/work/atk2_sc1_shin`
+ブランチ: `feat/ek_ra6m5_phase1` (Phase 2 もこのブランチで継続．Phase 完了時に PR 化を検討)
+
+main からの差分 commit:
+
+| Commit | 内容 |
+|---|---|
+| `f0dfb10` | `CLAUDE.md`: リポジトリ概要 + EK-RA6M5 開発項目 (`/init` 由来) |
+| `650f82e` | `arch/arm_m_gcc/ra6m5_fsp/`: FSP 6.1.0 同梱 + `Makefile.chip` + `chip_config.h` + README (377 ファイル，~133k 行) |
+| `75dcc0a` | `phase1.md`〜`phase6.md`: 全 6 フェーズの計画 |
+| `d3bd62b` | docs: codex Phase 1 レビュー指摘 (B-1/B-2/R-2/R-3/R-4) を文書に反映 |
+
+### 0-2. 必読ファイル (この順)
+
+1. `CLAUDE.md` — プロジェクト全体像・3-pass cfg ビルドフロー・層構造・H5 移植時の落とし穴．特に **「開発項目」** 節 (末尾) が本タスクのブリーフ．
+2. `phase1.md` — Phase 1 の成果物と codex レビュー反映後のリスク表．
+3. `arch/arm_m_gcc/ra6m5_fsp/README.md` — **`§6.1` 起動経路と `§6.3` `vector_data.c` 取扱を必ず読む**．Phase 2 の実装方針はここに集約済．
+4. 本ファイル (`phase2.md`) 残りの節．
+5. `arch/arm_m_gcc/stm32h5xx_stm32cube/{Makefile.chip,chip_config.h,README.md}` および `target/nucleo_h563zi_gcc/{Makefile.target,target_config.c,target_hw_counter.c,nucleo_h563zi.h,stm32h563zi.ld,README.md}` — H5 版を **そのまま踏襲する** ターゲット層の見本．
+6. `arch/arm_m_gcc/common/{start.S,Makefile.prc,prc_config.{c,h},prc_support.S}` — **絶対に変更しない** 共通プロセッサ依存部．
+7. `obj/obj_nucleo_h563zi/Makefile` — Phase 3 で複製する Makefile の見本．
+
+### 0-3. Phase 1 で確定した設計判断 (再議論不要)
+
+| ID | 判断 | 根拠 |
+|---|---|---|
+| (A) | FSP は Smart Configurator 出力をそのままコミット (vendoring) | ユーザ確認済 |
+| (B) | ベクタテーブルは ATK2 cfg pass2 生成 (`Os_Lcfg.c`) を使う．FSP 生成 `g_vector_table[]` は除外 | ユーザ確認済 |
+| (C) | `arch/arm_m_gcc/common/` は変更しない | CLAUDE.md 開発項目 |
+| (D) | FSP は `arch/arm_m_gcc/ra6m5_fsp/fsp/` 配下に as-is で同梱．Smart Configurator 生成 (`ra_cfg/` / `ra_gen/`) は target 層配下 | Phase 1 README §3 |
+
+### 0-4. Phase 2 で **確定すべき** 未決事項 (本ファイル§設計判断 を参照)
+
+- **vector_data.c 取扱**: (a) 抽出 → (b) リネーム → (c) リンカ廃棄 の順に試し，最初に通った方式を採用．
+- **`hardware_init_hook` 実装**: (α) FSP SystemInit を BSS 後に呼ぶ — を第一候補．(β) は最後の手段．
+
+### 0-5. codex Phase 1 レビュー結果
+
+`d3bd62b` で全文書反映済．特に重要な指摘 (Phase 2 実装で踏まないよう):
+
+1. **`start.S` は `SystemInit()` を直接呼ばない**．`hardware_init_hook` (BSS 前) と `software_init_hook` (BSS 後) の弱定義シンボルを呼ぶ．target 層が override する．
+2. **FSP `SystemInit()` は BSS 領域変数を触る** (`bsp_init_uninitialized_vars()` 等)．`hardware_init_hook` から呼ぶと未定義動作．`target_hardware_initialize()` (BSS 後) から呼ぶこと．
+3. **`vector_data.c` を全除外すると `g_interrupt_event_link_select[]` (IELSR テーブル) も失う**．`bsp_irq.c:39` の弱定義 (全 0) にフォールバックして実 IELSR が設定されない．
+4. **`BSP_MCU_GROUP_RA6M5` `BSP_MCU_R7FA6M5BH` は `bsp_cfg.h` (target 層) で定義**．`Makefile.chip` の `-D` には書かない．
+5. **`bsp_linker.c` (Option Setting Memory) は Phase 3 で `KERNEL_COBJS` に追加**．Phase 2 では未対応で良い．
+
+### 0-6. Phase 2 の最初に取るアクション
+
+1. **e² studio Smart Configurator** で baseline プロジェクト生成 (本ファイル §実施手順 Phase 2-A)．これは GUI 必須．Claude が代替できないため，**ユーザに依頼する作業**．
+2. ユーザから生成物 (`ra_cfg/`, `ra_gen/`, `configuration.xml`) を受領．
+3. `target/nucleo_h563zi_gcc/` を `target/ek_ra6m5_gcc/` に複製して Phase 2-B 着手．
+
+### 0-7. 制約・運用ルール
+
+- **共通プロセッサ依存部 `arch/arm_m_gcc/common/` は変更禁止** (CLAUDE.md 開発項目)．
+- 再度 codex レビューを依頼する場合は `Agent` (subagent_type=`codex:codex-rescue`) を使う．本セッションのレビュー結果は本ブランチ commit `d3bd62b` のメッセージにサマリあり．
+- Smart Configurator GUI 操作は人間にしかできない (`rasc.exe` 等の CLI は e² studio 2025.07 に同梱なし)．
+- Windows make の高並列度問題があるため `-j` は `4` 以下を推奨．
+- コミットメッセージは日本語．`<area>: <要約>` 形式 (例: `target/ek_ra6m5_gcc: r7fa6m5bh.ld 追加`)．
+- 共著者末尾は `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`．
+
+---
+
 ## 目的
 
 EK-RA6M5 ボード固有のターゲット依存部 `target/ek_ra6m5_gcc/` を新規作成し，Phase 1 のチップ依存部と組合せてビルド可能な状態にする．Smart Configurator 生成物 (`ra_cfg/`, `ra_gen/`) の取り込みも本フェーズで完結させる．
