@@ -70,8 +70,9 @@ obj/obj_ek_ra6m5/
 | 項目 | 内容 | 緩和策 |
 |---|---|---|
 | FSP `bsp_irq.c` の弱定義シンボルが ATK2 ベクタテーブルと整合しない | `nm` でシンボル衝突確認．必要なら `bsp_irq.c` を除外 | Phase 1 codex レビューで先行確認 |
-| FSP の `system.c` `SystemInit()` 内で VTOR を書換えている | ATK2 ベクタが上書きされ動作不能になる．`SCB->VTOR = ...` の有無を grep | Phase 1 codex レビュー |
-| RA6M5 の Option Setting Memory (OFS0/OFS1/OSIS など) を初期化していないため起動しない | リンカスクリプトに `.option_setting` セクションを設置．FSP `bsp_linker.c` がデフォルト値を提供 | Phase 3 ビルド失敗時に確認 |
+| FSP の `system.c` `SystemInit()` 内で VTOR を書換えている (line 236) | ATK2 ベクタが上書きされる．順序を `target_hardware_initialize()` (FSP SystemInit) → `target_initialize()` (`prc_initialize()` で VTOR を ATK2 ベクタへ再書込) で守る | Phase 2 で確定 |
+| **RA6M5 の Option Setting Memory (OFS0/OFS1/OSIS) が未配置で起動しない** | `arch/arm_m_gcc/ra6m5_fsp/fsp/src/bsp/mcu/ra6m5/bsp_linker.c` が OFS デフォルト値を `.option_setting_*` セクションに配置している．**Phase 3 で本ファイルを `KERNEL_COBJS` に追加し，`r7fa6m5bh.ld` に対応セクションを設置する**． | Phase 3 ビルド時に対応 (Phase 1 では未対応) |
+| FSP `bsp_init`(`bsp_common.c`) などの WeakSymbol が未定義のまま残ると weak のデフォルト動作になる | 必要時に target 層で `bsp_init(void *)` 等を override | Phase 3 ビルド時に判明 |
 | Windows make の高並列度問題 | `-j4` 上限固定．`Makefile` のデフォルト記述で誘導 | Makefile に注記 |
 
 ## 後続フェーズへの引継

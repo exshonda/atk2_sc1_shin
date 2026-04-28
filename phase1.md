@@ -58,13 +58,15 @@ arch/arm_m_gcc/ra6m5_fsp/
 - [ ] codex レビューで "Recommended next move" が「Phase 2 に進める」または「軽微な修正後に進める」であること．Blocker が出た場合は Phase 1 を再着手．
 - [ ] 本フェーズではコンパイルは行わない (Smart Configurator 生成物が無いため)．コンパイル検証は Phase 2 完了時に実施．
 
-## リスク
+## リスク (codex Phase 1 レビュー反映)
 
 | 項目 | 内容 | 緩和策 |
 |---|---|---|
-| FSP `system.c` の `SystemInit()` シグネチャが ATK2 `start.S` と非互換 | `void SystemInit(void)` で一致しているはずだが要確認 | Phase 2 着手前に codex で grep 確認 |
-| FSP の弱定義 `Reset_Handler` / `NMI_Handler` 等が ATK2 ベクタと衝突 | `bsp_irq.c` などで weak alias がある可能性 | codex レビュー項目に含む |
-| 同梱した BSP COBJS が依存ヘッダを `ra_cfg/` から探しに行く (`bsp_cfg.h` 等) | コンパイルは Phase 2 まで成立しないことを明記 | README §7 で明示済 |
+| FSP `system.c` の `SystemInit()` シグネチャ | `void SystemInit(void)` で start.S 互換．**しかし内部で BSS 領域変数を初期化する** (`bsp_init_uninitialized_vars()`) ため `start.S` の **`hardware_init_hook` (BSS 前) からは呼べない**． | Phase 2 で `target_hardware_initialize()` (BSS 後) から呼ぶ設計に決定．README §6.1 に詳述． |
+| FSP の弱定義 `Default_Handler` / NMI/HardFault 等が ATK2 ベクタと衝突 | `bsp_irq.c` 内に `Default_Handler` の弱定義あり．ATK2 cfg pass2 出力のベクタが弱定義を上書きする想定．Phase 3 ビルド時に `nm $(OBJFILE) \| grep Default_Handler` で確認． | Phase 3 検証項目 |
+| 同梱した BSP COBJS が依存ヘッダを `ra_cfg/` から探しに行く (`bsp_cfg.h` 等) | コンパイルは Phase 2 まで成立しないことを明記．`BSP_MCU_GROUP_RA6M5` `BSP_MCU_R7FA6M5BH` 等の MCU 識別マクロも `bsp_cfg.h` (target 層) で定義される． | README §7 で明示済 |
+| `vector_data.c` のシンボル `g_interrupt_event_link_select[]` (必須) と `g_vector_table[]` (衝突) の同居 | Phase 2 で抽出/リネーム/廃棄のいずれかで対処．`bsp_irq.c:39` に `g_interrupt_event_link_select` の弱定義 (全 0) があるため，何も対処せず `vector_data.c` を除外すると IELSR テーブルが空になる． | phase2.md「設計判断」「リスク」表に詳述 |
+| `bsp_linker.c` (Option Setting Memory `.option_setting_*`) が `KERNEL_COBJS` に未追加 | Phase 1 では意図的に外している．Phase 3 でリンカスクリプト整備時に追加し，OFS デフォルト値 (IWDT 停止等) が Flash 既定領域に配置されるようにする． | phase3.md リスク表に記載 |
 
 ## 後続フェーズへの引継
 

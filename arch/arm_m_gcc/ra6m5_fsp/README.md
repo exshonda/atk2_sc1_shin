@@ -148,30 +148,110 @@ $(TARGETDIR)/ra_gen
 
 ## 6. ATK2 と FSP の責務分担
 
+> **本節は Phase 2 で Smart Configurator 出力を取り込み，実装を確定した
+> 後に最終決定する**．以下は現時点の設計方針メモであり，ソース実装は未．
+
+### 6.1 起動経路 (start.S 実装と整合する正確な記述)
+
+`arch/arm_m_gcc/common/start.S` の `_kernel_start` の実体は次の流れ:
+
+```
+_kernel_start:
+    cpsid i                          ; 全割込み禁止
+    [INIT_MSP] msr msp, kernel_ostkpt ; (オプション) MSP 再設定
+    bl  hardware_init_hook            ; ← 弱定義．BSS 初期化「前」に呼ばれる
+    BSS clear
+    DATA copy (ROM → RAM)
+    bl  software_init_hook            ; ← 弱定義．BSS 初期化「後」に呼ばれる
+    bl  main                          ; ATK2 main → StartOS → target_initialize
+                                      ;             → target_hardware_initialize
+                                      ;             → prc_initialize
+```
+
+**重要**: `start.S` 自体は `SystemInit()` を呼ばない．`SystemInit` を含むあらゆる
+チップ初期化は **`hardware_init_hook` (BSS 前) または `target_hardware_initialize`
+(BSS 後)** に配置される．H5 では `hardware_init_hook` 内で `SystemInit()` を呼ん
+でいる (H5 の `SystemInit` は BSS 非依存の極小実装のため)．
+
+**FSP `SystemInit()` は BSS 後に呼ぶ必要がある**．FSP 6.1.0 の
+`bsp/cmsis/Device/RENESAS/Source/system.c` の `SystemInit()` は H5 の
+それと違って大きく，下記を順次実行する (line numbers は同梱版):
+- L212 `SCB->CPACR = CP_MASK` (FPU 有効化)
+- L236 `SCB->VTOR = (uint32_t) &__VECTOR_TABLE` (VTOR を FSP のベクタへ)
+- L270 `bsp_init_uninitialized_vars()` (BSS 領域変数の初期化)
+- L274 `R_BSP_WarmStart(BSP_WARM_START_RESET)`
+- (内部で `bsp_clock_init` 等が呼ばれる)
+- L307 `R_BSP_WarmStart(BSP_WARM_START_POST_CLOCK)`
+- L450 `R_BSP_WarmStart(BSP_WARM_START_POST_C)`
+- L494 `__init_array_start[i]()` (C++ 静的コンストラクタ)
+
+L270/L274 以降は **BSS が 0 化されている前提** で動くため，
+`hardware_init_hook` から呼ぶと未定義動作になる．したがって RA6M5 では
+**`SystemInit()` の呼出を `target_hardware_initialize()` に移す**か，
+あるいは **FSP `SystemInit()` を採用せず target 専用の薄い `SystemInit`
+相当を `hardware_init_hook` に書く**かのいずれかを Phase 2 で選択する．
+
+### 6.2 責務分担マトリクス (Phase 2 で確定)
+
 | 機能 | 担当 | 備考 |
 |---|---|---|
 | **リセットベクタ** | ATK2 (`arch/arm_m_gcc/common/start.S`) | FSP 同梱の `startup.c` は使わない |
-| **`SystemInit()` (FPU/CPACR 初期設定)** | FSP (`bsp/cmsis/Device/RENESAS/Source/system.c`) | `start.S` から呼出 |
-| **クロック初期化 (PLL 200 MHz 等)** | FSP `bsp_clocks.c` + `R_BSP_WarmStart` | 設定値は `bsp_clock_cfg.h` (Smart Configurator 生成) |
-| **ベクタテーブル** | ATK2 cfg pass2 出力 (`Os_Lcfg.c` 内) | FSP 生成の `vector_data.c` の vector テーブルは使わない (重複定義になる) |
-| **ICU.IELSR (NVIC スロット ↔ ペリフェラル割込みのマップ)** | FSP 生成の `g_interrupt_event_link_select` テーブルを参照し， ATK2 の `prc_initialize()` 等で書き込む | Phase 2 の `target_config.c` で実装 |
+| **早期 FPU/CPACR 設定** | target 層の `hardware_init_hook` (Phase 2) | BSS 前に動くため最小限 |
+| **VTOR 設定 (ATK2 ベクタテーブルへ)** | ATK2 `prc_initialize()` (`prc_config.c`) | FSP `SystemInit()` の VTOR 書込みを ATK2 が後で上書きする方針 |
+| **クロック初期化 (PLL 200 MHz)** | FSP `bsp_clocks.c` + `R_BSP_WarmStart` | `target_hardware_initialize` から `R_BSP_WarmStart(BSP_WARM_START_POST_CLOCK)` 等を駆動，もしくは FSP `SystemInit()` を BSS 後に呼ぶ．設定値は `bsp_clock_cfg.h` (Smart Configurator 生成) |
+| **C++ 静的コンストラクタ呼出** | FSP `SystemInit()` 内 (使うか未確定) | ATK2 sample は C++ 不使用なので無くて良い |
+| **ベクタテーブル本体** | ATK2 cfg pass2 出力 (`Os_Lcfg.c` 内) | FSP 生成 `vector_data.c` の `g_vector_table[]` は使わない (重複定義になる) |
+| **ICU.IELSR テーブル** | FSP 生成の `g_interrupt_event_link_select`(`vector_data.c` 内) | **同シンボルだけ生かしておく必要あり**．Phase 2 で抽出方法を確定 (§6.3) |
 | **個々の ISR 関数** | ATK2 (cfg.arxml で登録された C2ISR) | FSP の `*_isr` 関数は呼び出さない |
-| **GPIO 初期化** | FSP `r_ioport` + `R_IOPORT_Open` | Phase 2 で `target_config.c` から呼出 |
-| **UART 送受信 (シリアル)** | レジスタ直叩き or FSP `r_sci_uart` (検討中) | H5 では HAL を経由せず直接レジスタ操作．RA6M5 でも同方針が無難 |
+| **GPIO 初期化** | FSP `r_ioport` + `R_IOPORT_Open` | Phase 2 で `target_hardware_initialize` から呼出 |
+| **UART 送受信 (シリアル)** | レジスタ直叩き (第一候補) ／ FSP `r_sci_uart` (代替) | H5 ではレジスタ直叩き．RA6M5 も同方針で素直に書ける |
 | **HW カウンタ (TIM2/TIM5 相当)** | レジスタ直叩き (GPT320/GPT321) | H5 流儀．`target_hw_counter.c` で実装 |
 
-> **重要**: FSP のベクタテーブル (`g_vector_table[]` in `vector_data.c`) と
-> ATK2 cfg 生成のベクタテーブルは **同名/同役割** なので **二重リンクは不可**．
-> Phase 2 で `Makefile.target` から FSP 生成の `vector_data.c` をビルド対象
-> から外す方針．逆に `g_interrupt_event_link_select` (ICU IELSR 構成データ)
-> は ATK2 側に持たないので FSP 生成のものをそのまま使う．
+### 6.3 vector_data.c の取扱 (Phase 2 確定事項; 重要)
+
+FSP 生成 `vector_data.c` には **2 つのシンボル**が同居する:
+
+- `g_vector_table[]` (ARM Cortex-M ベクタテーブル) — **ATK2 と衝突するので使えない**
+- `g_interrupt_event_link_select[]` (ICU.IELSR の値の配列) — **必須**．これが
+  無いと `bsp_irq.c` の弱定義で全 0 にフォールバックし，IELSR が設定されない
+
+「`vector_data.c` をビルド対象から外す」だけでは `g_interrupt_event_link_select`
+も失う．Phase 2 では下記いずれかを選択:
+
+- **(a) 抽出方式**: Smart Configurator 生成の `vector_data.c` から
+  `g_interrupt_event_link_select[]` 部分だけを抽出し，`target_irq_data.c`
+  という別ファイルに転記してビルド対象に追加．生成元の `vector_data.c` は
+  ビルド除外．Smart Configurator 再生成時は手動で再抽出．
+- **(b) リネーム方式**: `vector_data.c` は丸ごとビルドし，リンカで
+  `g_vector_table` をローカル/破棄に降格させ，ATK2 側の同名シンボルを残す．
+  例: `objcopy --redefine-sym g_vector_table=fsp_g_vector_table_unused vector_data.o`
+  をビルドルールに挟む．Smart Configurator 再生成に強い．
+- **(c) 専用セクション方式**: リンカスクリプトで FSP `g_vector_table[]` を
+  `/DISCARD/` セクションに送り，ATK2 のベクタを `.isr_vector` に配置．
+  Smart Configurator 出力に手を入れない最も clean な方式だが，FSP が
+  `__VECTOR_TABLE` シンボルを使ってアクセスしている箇所と整合させる必要．
+
+Phase 2 検証で (a)→(b)→(c) の順に試し，最初に通ったものを採用する．
 
 ## 7. 既知の制限・課題 (Phase 1 時点)
 
 - **本層単独ではコンパイルできない**．`bsp_cfg.h` `bsp_clock_cfg.h`
-  `fsp_cfg.h` `vector_data.h` 等が Smart Configurator 出力前提のため．
-  Phase 1B でターゲット依存部の `ra_cfg/` `ra_gen/` を整備した時点で
-  全体ビルド可能になる．
+  `fsp_cfg.h` `vector_data.h` などが Smart Configurator 出力前提のため．
+  Phase 2 でターゲット依存部の `ra_cfg/` `ra_gen/` を整備した時点で
+  全体ビルド可能になる．関連:
+  - `BSP_MCU_GROUP_RA6M5` `BSP_MCU_R7FA6M5BH` などの MCU 識別マクロは
+    `Makefile.chip` の `-D` ではなく，**Smart Configurator 生成の
+    `bsp_cfg.h` 内で定義される** (target 層配下)．本 README で当初
+    `Makefile.chip` 配下と書いていたのは誤り．
+  - `Makefile.chip` の `CDEFS` (`-D_RENESAS_RA_ -D_RA_CORE=CM33
+    -D_RA_ORDINAL=1`) は FSP 6.1.0 の chip 層単独コンパイルに必要な最小
+    セット．残りの `BSP_CFG_*` 系マクロは `bsp_cfg.h` で供給する設計．
+- **`bsp_linker.c` の Option Setting Memory (OFS0/OFS1/OSIS 等)** は
+  `KERNEL_COBJS` に**含めていない**．Phase 3 でリンカスクリプトに
+  `.option_setting_*` セクションを設置し，本ファイルを `KERNEL_COBJS`
+  に追加する判断を行う (FSP 既定値の OFS が必要ならリンクすべし)．
+- **FSP `SystemInit()` を `hardware_init_hook` から呼べない**点も Phase 2
+  で扱う (§6.1 参照)．BSS 後に呼ぶ設計に切替．
 - TrustZone (Cortex-M33 Secure 側) は未対応．Non-Secure 単一ビルド前提．
 - Multi-core は未対応 (RA6M5 はシングルコアなので問題なし)．
 - DTC / DMAC は同梱していない．必要時に上流 pack からコピー．
