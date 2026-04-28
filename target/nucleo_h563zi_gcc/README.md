@@ -288,7 +288,7 @@ OK → `Project` → `Clean...` → `Build`．
 | `cfg.exe` が見つからない | デフォルトは Python 版なので通常発生しない．`USE_PY_CFG=0` を指定したのに発生する場合は `cfg/cfg/cfg.exe` の存在確認 (本リポジトリには非同梱．README.md セットアップ参照) |
 | `Cannot create temporary file in C:\WINDOWS\` | (msys make でのみ発生) `make TMP="C:/Users/<user>/AppData/Local/Temp" TEMP=...` で TMP を明示．STM32CubeIDE では発生しない |
 | 並列ビルドで `Os_Cfg.h: No such file or directory` | 並列依存設定に問題が無いか確認 (ATK2 では Makefile に order-only 依存を入れて対応済み) |
-| 高並列度で `process_begin: CreateProcessW(...) failed. make (e=87) パラメーターが間違っています` | GNU Make on Windows の高 -j 値での既知の競合．`-j` を下げる．STM32CubeIDE: Project Properties → C/C++ Build → Behavior → `Use parallel jobs` を **4 〜 8** に手動設定 (`Use optimal jobs` だと CPU コア数になり多コア環境で発症) |
+| 高並列度で `process_begin: CreateProcessW(...) failed. make (e=87) パラメーターが間違っています` | GNU Make on Windows の高 -j 値での既知の競合．`-j` を下げる．STM32CubeIDE: Project Properties → C/C++ Build → Behavior → `Use parallel jobs` を **4** に手動設定 (`Use optimal jobs` だと CPU コア数になり多コア環境で発症．本リポジトリの `.cproject` は -j4 をデフォルトにしてある．8 でも発症する環境あり) |
 | シリアルに何も出ない | ST-Link Virtual COM Port のドライバ最新版を入れる．[ST 公式](https://www.st.com/en/development-tools/stsw-link009.html) |
 
 ## 10. サンプルアプリケーション
