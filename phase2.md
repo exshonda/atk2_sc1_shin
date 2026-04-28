@@ -208,3 +208,49 @@ target/ek_ra6m5_gcc/
 
 - Phase 3 が `obj/obj_ek_ra6m5/Makefile` を作成し，本層+チップ層+カーネルを統合してリンク可能状態にする．
 - `configuration.xml` をコミットすることで，Smart Configurator 再起動時に同じ baseline を再生成できる．FSP バージョン更新時はこのファイルを基点に regen．
+
+---
+
+## 進捗記録 (Phase 2-B 骨格)
+
+### 完了 (2026-04-29)
+
+- `target/ek_ra6m5_gcc/` 一式を新規作成．`target/nucleo_h563zi_gcc/` 構造を踏襲．
+- 主要ファイル:
+  - `Makefile.target` (FPU_LAZYSTACKING, ra_cfg/ra_gen 検索パス, KERNEL_COBJS から vector_data.o 除外)
+  - `r7fa6m5bh.ld` (Flash 2MB@0x00000000, SRAM 512KB@0x20000000．`/DISCARD/ : *(.fixed_vectors)` で FSP `__VECTOR_TABLE` を保険破棄)
+  - `ek_ra6m5.h` (CPU_CLOCK_HZ=200M, PCLKD_HZ=100M, P006/P004/P008 LED 定義)
+  - `target_kernel.h` (スタックサイズ等．TMIN_INTNO/TMAX_INTNO/TBITW_IPRI は `arch/arm_m_gcc/common/prc_config.h` の値を流用)
+  - `target_config.c` (起動経路 §設計判断 (α): `hardware_init_hook` 空，`target_hardware_initialize` で SystemInit + IOPORT + SCI9 + prc_hw_init)
+  - `target_serial.c/h` ＋ `target_serial.arxml` (SCI9 RX 割込み，INTNO 暫定 16)
+  - `target_hw_counter.c/h` ＋ `target_hw_counter.arxml` (GPT320 free-run + GPT321 one-shot．INTNO 暫定 18)
+  - `target_sysmod.h` `target_test.h` `target_cfg1_out.h` `target_rename.h` `target_unrename.h`
+  - `target.tf` `target_check.tf` `target_offset.tf` (H5 同様 prc.tf を include するだけの薄い派生)
+  - `ra_cfg/README.md` `ra_gen/README.md` (Smart Configurator 出力配置の TODO 説明)
+  - `README.md` (ボード構成・GPIO・優先度・Phase 2-A 操作手順)
+
+### 設計判断の確定状況
+
+| 項目 | phase2.md §設計判断 候補 | 採用 | 備考 |
+|---|---|---|---|
+| `vector_data.c` 取扱 | (a) 抽出 / (b) リネーム / (c) リンカ廃棄 | **未確定** | `Makefile.target` は (a) 仮定で `vector_data.o` を `KERNEL_COBJS` から除外．Phase 2-A 完了後に最終決定．`r7fa6m5bh.ld` は (c) 用の `/DISCARD/` も併設 |
+| `hardware_init_hook` 実装 | (α) FSP SystemInit を BSS 後に呼ぶ / (β) target 専用 SystemInit | **(α) 採用** | `hardware_init_hook` は空，`target_hardware_initialize` で `SystemInit()` を呼ぶ |
+
+### Phase 2-A (ユーザ作業) 待ち項目
+
+以下は `ra_cfg/` `ra_gen/` `configuration.xml` の Smart Configurator 出力受領後に確定:
+
+- `target_serial.h` `INTNO_SIO` の実値 (`g_interrupt_event_link_select[]` の SCI9_RXI スロット番号 + 16)
+- `target_serial.arxml` の `OsIsrInterruptNumber` `<VALUE>16</VALUE>` 部
+- `target_hw_counter.h` `GPT321_INTNO` の実値 (GPT321_OVF スロット番号 + 16)
+- `target_hw_counter.arxml` の `OsIsrInterruptNumber` `<VALUE>18</VALUE>` 部
+- `target_config.c` の `EK_RA6M5_HAVE_VECTOR_DATA` 有効化判断 (Makefile.target で `-DEK_RA6M5_HAVE_VECTOR_DATA` を付与)
+- `target_config.c` の `EK_RA6M5_USE_FSP_PINCFG` 有効化 (Smart Configurator 生成 `pin_data.c` の `g_bsp_pin_cfg` を取込）
+- `vector_data.c` 取扱方式 (a)/(b)/(c) の最終確定．それに応じて `Makefile.target` `KERNEL_COBJS` を更新
+
+### 既知の検証ポイント (Phase 3 でビルド時に解消)
+
+- IDE (clangd) は `kernel_impl.h` `bsp_api.h` を解決できないため `target_config.c` `target_hw_counter.c` に多数のエラーマーカが出る．これは IDE の INCLUDE 設定問題であり実ビルドでは解決される．
+- SCI9 BRR=26 計算は PCLKB=100MHz 仮定．Smart Configurator の `bsp_clock_cfg.h` で PCLKB 値を確認し，必要なら更新．
+- GPT のクロック源は PCLKD 直結 (`TPCS=DIV1`) 固定で TIMER_CLOCK_HZ=1MHz としているが，PCLKD=100MHz では実 100tick/us になる．Phase 4 で 1tick=1us 相当にする最終調整 (PCLKD 設定変更 or GTPR でのソフト分周) を決定．
+- `bsp_linker.c` (Option Setting Memory) は Phase 3 で `KERNEL_COBJS` に追加判断．現状リンカスクリプトに `.option_setting_*` セクションを置いていない．

@@ -1,0 +1,101 @@
+#
+#  TOPPERS ATK2
+#      Toyohashi Open Platform for Embedded Real-Time Systems
+#      Automotive Kernel Version 2
+#
+#  Copyright (C) 2008-2017 by Center for Embedded Computing Systems
+#              Graduate School of Information Science, Nagoya Univ., JAPAN
+#  Copyright (C) 2026 by Center for Embedded Computing Systems
+#              Graduate School of Information Science, Nagoya Univ., JAPAN
+#
+#  上記著作権者は，以下の(1)〜(4)の条件を満たす場合に限り，本ソフトウェ
+#  ア（本ソフトウェアを改変したものを含む．以下同じ）を使用・複製・改
+#  変・再配布（以下，利用と呼ぶ）することを無償で許諾する．
+#
+#  本ソフトウェアは，無保証で提供されているものである．
+#
+
+#
+#  Makefile のターゲット依存部（EK_RA6M5_GCC用）
+#
+
+#
+#  ボード名，チップ名，プロセッサ名，開発環境名の定義
+#
+TARGET = ek_ra6m5_gcc
+BOARD  = ek_ra6m5
+CHIP   = ra6m5_fsp
+PRC    = arm_m
+TOOL   = gcc
+
+#
+#  FPU を使用するか
+#    FPU_NO_PRESERV     : FPU 有効．OS は s16-s31 を保存/復帰しない．
+#    FPU_NO_LAZYSTACKING: FPU 有効．Lazy Stacking 無効．OS が s16-s31 を保存/復帰．
+#    FPU_LAZYSTACKING   : FPU 有効．Lazy Stacking 有効．OS が s16-s31 を保存/復帰．
+#    (未指定)            : FPU 不使用 (soft float)．
+#
+FPU_USAGE = FPU_LAZYSTACKING
+
+#
+#  Smart Configurator 出力ディレクトリ
+#  Phase 2-A で e² studio から生成し，本リポジトリにコミットする．
+#
+RA_CFG_DIR = $(TARGETDIR)/ra_cfg
+RA_GEN_DIR = $(TARGETDIR)/ra_gen
+
+#
+#  コンパイルオプション
+#
+INCLUDES := $(INCLUDES) -I$(TARGETDIR) \
+                        -I$(RA_CFG_DIR)/fsp_cfg \
+                        -I$(RA_CFG_DIR)/fsp_cfg/bsp \
+                        -I$(RA_GEN_DIR)
+CDEFS    := $(CDEFS) -DINIT_MSP
+COPTS    := $(COPTS) -ffunction-sections -fdata-sections
+LDFLAGS  := $(LDFLAGS) -Wl,--gc-sections
+
+#
+#  カーネルに関する定義
+#
+KERNEL_DIR     := $(KERNEL_DIR) $(TARGETDIR) $(RA_GEN_DIR)
+KERNEL_ASMOBJS := $(KERNEL_ASMOBJS)
+
+#
+#  KERNEL_COBJS:
+#    target_config.o, target_hw_counter.o : 本層の C 実装
+#    common_data.o, hal_data.o, pin_data.o : Smart Configurator 出力
+#                                            (ra_gen/ 配下)
+#
+#  vector_data.o は **意図的に除外**．FSP 生成 vector_data.c には
+#  g_vector_table[] (ATK2 と衝突) と g_interrupt_event_link_select[]
+#  (必須) が同居するため，丸ごと取込まず target_config.c で IELSR を
+#  設定する設計．Smart Configurator が g_interrupt_event_link_select
+#  を別ファイル化していない場合は Phase 2-B で抽出方式 (a)/リネーム
+#  方式 (b)/リンカ廃棄 (c) を検討．
+#  TODO[Phase 2-A]: ra_gen/vector_data.c の取扱方式を確定．
+#
+KERNEL_COBJS   := $(KERNEL_COBJS) target_config.o target_hw_counter.o \
+                  common_data.o hal_data.o pin_data.o
+
+#
+#  オフセットファイル生成のための定義
+#
+OFFSET_TF := $(TARGETDIR)/target_offset.tf
+
+#
+#  依存関係の定義
+#
+Os_Lcfg.timestamp: $(TARGETDIR)/target.tf
+$(OBJFILE): $(TARGETDIR)/target_check.tf
+offset.h: $(TARGETDIR)/target_offset.tf
+
+#
+#  リンカスクリプトの定義
+#
+LDSCRIPT = $(TARGETDIR)/r7fa6m5bh.ld
+
+#
+#  チップ依存部のインクルード
+#
+include $(SRCDIR)/arch/$(PRC)_$(TOOL)/$(CHIP)/Makefile.chip
