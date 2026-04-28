@@ -1,0 +1,121 @@
+# Phase 2: ターゲット依存部の作成
+
+## 目的
+
+EK-RA6M5 ボード固有のターゲット依存部 `target/ek_ra6m5_gcc/` を新規作成し，Phase 1 のチップ依存部と組合せてビルド可能な状態にする．Smart Configurator 生成物 (`ra_cfg/`, `ra_gen/`) の取り込みも本フェーズで完結させる．
+
+## 前提
+
+- Phase 1 完了 (チップ依存部 `arch/arm_m_gcc/ra6m5_fsp/` がコミット済み，codex レビュー済み)．
+- ユーザが e² studio Smart Configurator を 1 度起動して下記構成のプロジェクトを生成できる:
+  - Board: EK-RA6M5
+  - Toolchain: GCC ARM Embedded
+  - Clock: ICLK 200 MHz
+  - Stacks: ATK2 が後から再構成するので最小値でよい
+  - Pin Configuration: SCI9 UART (P602/P603) を有効化
+  - Modules: r_ioport, r_sci_uart, r_gpt × 2 (32-bit free-run + one-shot)
+
+## 設計判断
+
+- 既存 `target/nucleo_h563zi_gcc/` の構成を最大限踏襲する．差分は MCU 固有部分 (リンカスクリプト，ペリフェラル，割込み番号定義) のみ．
+- **シリアル**: SCI9 を使用．EK-RA6M5 は J-Link OB の VCOM が SCI9 (P602=TXD9, P603=RXD9) に接続．115200bps, 8N1, ISR 駆動 RX．H5 と同様にレジスタ直叩きを基本とし，FSP `r_sci_uart` は使わない (Phase 4 で評価し，FSP に切替えても可)．
+- **HW カウンタ**: GPT320 (32-bit) をフリーランニング 1 MHz (PCLKD=100MHz / 100)，GPT321 をワンショットアラーム 1 MHz．H5 の TIM2/TIM5 と同役割．
+- **割込み優先度**: Cortex-M33 (4-bit, STM32H5xx と同じ): `tmin_basepri = 0x10`，GPT321 INTPRI=1，SCI9 RXI INTPRI=2，PendSV=0xFF，SVCall=0xE0．
+- **ICU IELSR マッピング**: FSP 生成 `g_interrupt_event_link_select` (in `vector_data.c`) を `target_initialize()` で参照し，`target_serial.arxml` `target_hw_counter.arxml` の INTNO と一致させる．INTNO は FSP が決めた NVIC スロット (0〜95) をそのまま採用．
+
+## 成果物
+
+```
+target/ek_ra6m5_gcc/
+├── README.md                  ボード固有解説 (NUCLEO-H563ZI 版に倣う)
+├── Makefile.target            FPU_USAGE / リンカ指定 / chip include
+├── r7fa6m5bh.ld               リンカスクリプト (FSP 雛形を派生)
+├── ek_ra6m5.h                 CPU_CLOCK_HZ, LED ピン, SCI9 ピン定数
+├── target_kernel.h            TMIN_INTNO=16, TMAX_INTNO=111, TBITW_IPRI=4 等
+├── target_config.c / .h       初期化 (R_BSP_WarmStart 連携 + IELSR 設定 + SCI9 ISR テーブル)
+├── target_serial.h / .arxml   sysmod/serial.c 用 + ATK2 cfg 定義
+├── target_hw_counter.c / .h / .arxml  GPT320/GPT321 ドライバ + ATK2 cfg
+├── target_sysmod.h            システムモジュール用ヘッダ
+├── target_test.h              テスト用ヘッダ
+├── target_cfg1_out.h          cfg1_out リンク用スタブ
+├── target_rename.h / target_unrename.h
+├── target.tf                  pass2 ターゲット依存テンプレート
+├── target_check.tf            pass3 チェック用テンプレート
+├── target_offset.tf           offset.h 生成用テンプレート
+├── ra_cfg/                    Smart Configurator 出力
+│   └── fsp_cfg/               bsp_cfg.h, bsp_clock_cfg.h, bsp_module_irq_cfg.h ほか
+└── ra_gen/                    Smart Configurator 出力
+    ├── common_data.{c,h}      hal モジュール初期化テーブル
+    ├── hal_data.{c,h}         FSP モジュールインスタンス定義
+    ├── pin_data.c             ピン構成 (R_IOPORT_Open に渡される)
+    ├── vector_data.{c,h}      ベクタテーブル + IELSR マッピング (※ vector_data.c は
+    │                          ビルド対象外．IELSR テーブルだけ参照する)
+    └── (configuration.xml は target/ek_ra6m5_gcc/ 直下に配置 - Smart Configurator
+         のソース)
+```
+
+## 実施手順
+
+### Phase 2-A: Smart Configurator で baseline 生成
+
+1. e² studio を起動，新規プロジェクト作成: `File → New → C/C++ Project → Renesas RA C/C++ Project`．
+2. Board: EK-RA6M5，Toolchain: GCC ARM Embedded，FSP: 6.1.0．
+3. Stacks タブで `r_ioport` `r_sci_uart` `r_gpt` を追加．SCI9 を選択．GPT320, GPT321 を 1 MHz 設定．
+4. Pin Configuration タブで P602=TXD9, P603=RXD9 を確認．
+5. Generate Project Content をクリック．
+6. 生成されたプロジェクトから下記のみコピー:
+   - `ra_cfg/` 全体 → `target/ek_ra6m5_gcc/ra_cfg/`
+   - `ra_gen/` 全体 → `target/ek_ra6m5_gcc/ra_gen/`
+   - `configuration.xml` → `target/ek_ra6m5_gcc/configuration.xml` (Smart Configurator 再起動用)
+7. 生成された `script/fsp.ld` は `r7fa6m5bh.ld` のベースとして取り込む (Phase 2-B で改造)．
+
+### Phase 2-B: ターゲット依存部一式の作成
+
+1. `target/nucleo_h563zi_gcc/` 全体を `target/ek_ra6m5_gcc/` に複製．
+2. **リンカスクリプト** `r7fa6m5bh.ld`: FSP 生成の `fsp.ld` をベースに，ATK2 流儀のセクション (`STARTUP(start.o)`, `_estack`, `__StackTop`, `__StackLimit`, `__data_start__/__data_end__`, `__bss_start__/__bss_end__`) を追加．Flash=2MB@`0x00000000`, SRAM=512KB@`0x20000000`．
+3. **ボード資源** `ek_ra6m5.h`: `CPU_CLOCK_HZ=200000000`，LED1=P006, LED2=P004, LED3=P008，User Button=P009 (EK-RA6M5 仕様確認)．
+4. **シリアル**: `target_config.c` の H5 USART3 部分を SCI9 に置換．`target_serial.h` の `INTNO_SIO` を `g_interrupt_event_link_select` の SCI9_RXI スロット番号に．
+5. **HW カウンタ**: `target_hw_counter.c/h` の TIM2/TIM5 部分を GPT320/GPT321 に置換．`target_hw_counter.arxml` の `INTNO` を GPT321_OVF (またはアラームに使う事象) のスロット番号に．
+6. **target_kernel.h**:
+   - `TARGET_MIN_STKSZ=256`, `MINIMUM_OSTKSZ=512`, `DEFAULT_TASKSTKSZ=1024`, `DEFAULT_ISRSTKSZ=1024`, `DEFAULT_HOOKSTKSZ=1024`, `DEFAULT_OSSTKSZ=8192`
+   - `TBITW_IPRI=4`
+   - `TMIN_INTNO=16` (Cortex-M33 IRQ0 = 例外番号 16)
+   - `TMAX_INTNO=16+96-1=111` (RA6M5 NVIC は 96 スロット)．要確認
+7. **Makefile.target**:
+   - `FPU_USAGE = FPU_LAZYSTACKING`
+   - `INIT_MSP` 定義
+   - `LDSCRIPT = $(TARGETDIR)/r7fa6m5bh.ld`
+   - `INCLUDES += -I$(TARGETDIR)/ra_cfg/fsp_cfg -I$(TARGETDIR)/ra_cfg/fsp_cfg/bsp -I$(TARGETDIR)/ra_gen`
+   - `KERNEL_DIR += $(TARGETDIR)/ra_gen`
+   - `KERNEL_COBJS += target_config.o target_hw_counter.o common_data.o hal_data.o pin_data.o`
+   - **`vector_data.o` は意図的に除外** (cfg 生成のベクタテーブルと衝突するため)
+   - 必要に応じて `r_ioport.o`, `r_sci_uart.o`, `r_gpt.o` を追加 (FSP ドライバを使う場合)
+   - `include $(SRCDIR)/arch/arm_m_gcc/ra6m5_fsp/Makefile.chip`
+8. **cfg テンプレート**: `target.tf`, `target_check.tf`, `target_offset.tf` を H5 から複製．ターゲット固有 ISR 検証ロジックは Phase 3 ビルド時に必要に応じて差替え．
+9. **target_config.c の追加実装**:
+   - `R_BSP_WarmStart()` のフックを利用し PRE_CLOCK / POST_CLOCK / POST_C のいずれかで初期化を ATK2 へ譲る
+   - もしくは ATK2 `prc_initialize()` の最後で `R_BSP_WarmStart(BSP_WARM_START_POST_CLOCK)` 相当を手動呼出
+   - `target_initialize()` 内で IELSR を設定: `R_ICU->IELSR[i] = (uint32_t)g_interrupt_event_link_select[i]`
+10. **README.md**: NUCLEO-H563ZI README に倣い，ボード資源・GPIO・ペリフェラル割当・優先度を記述．
+
+## 検証 / 終了条件
+
+- [ ] `target/ek_ra6m5_gcc/` が完成しコミット．
+- [ ] `obj/obj_ek_ra6m5/Makefile` (Phase 3 で作成予定) と組み合わせて pass1 の `cfg1_out.c` 生成までが通る．
+- [ ] BSP/FSP コードがエラーなくコンパイルされる (`bsp_clocks.o` 等の生成成功)．
+- [ ] リンクは Phase 3 で完了させる．
+
+## リスク
+
+| 項目 | 内容 | 緩和策 |
+|---|---|---|
+| Smart Configurator 出力の `vector_data.c` を除外しても，`vector_data.h` の `BSP_VECTOR_TABLE_MAX_ENTRIES` 等の定数が他で参照される | ヘッダだけ残しソースを除外する形で大半は解決．残ればヘッダから一部抜粋 | Phase 3 ビルド時に判明 |
+| FSP の `R_BSP_WarmStart()` フックタイミングと ATK2 `start.S → SystemInit() → main()` のフローが不一致 | `R_BSP_WarmStart` 各段階で何が必要か `bsp_common.c` を読んで把握．必要なら ATK2 `prc_initialize()` から手動呼出 | Phase 2-B step 9 |
+| EK-RA6M5 の VCOM が SCI9 でない可能性 (ボード Rev 違い) | ユーザーズマニュアルで配線確認．異なれば適切な SCI に変更 | Phase 2-B step 4 |
+| `TMAX_INTNO` の値が 96 で正しくない (RA6M5 の実 NVIC スロット数と一致しない) | `R7FA6M5BH.h` の `IRQn_Type` 定義から最大値を導出 | Phase 2-B step 6 |
+| FSP `pin_data.c` が `R_IOPORT_Open` 呼出を要求する (どこから呼ぶ?) | `target_initialize()` で `R_IOPORT_Open(&g_ioport_ctrl, &g_bsp_pin_cfg)` を実行 | Phase 2-B step 9 |
+
+## 後続フェーズへの引継
+
+- Phase 3 が `obj/obj_ek_ra6m5/Makefile` を作成し，本層+チップ層+カーネルを統合してリンク可能状態にする．
+- `configuration.xml` をコミットすることで，Smart Configurator 再起動時に同じ baseline を再生成できる．FSP バージョン更新時はこのファイルを基点に regen．
