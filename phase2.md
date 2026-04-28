@@ -64,7 +64,7 @@ main からの差分 commit:
 
 - **共通プロセッサ依存部 `arch/arm_m_gcc/common/` は変更禁止** (CLAUDE.md 開発項目)．
 - 再度 codex レビューを依頼する場合は `Agent` (subagent_type=`codex:codex-rescue`) を使う．本セッションのレビュー結果は本ブランチ commit `d3bd62b` のメッセージにサマリあり．
-- Smart Configurator GUI 操作は人間にしかできない (`rasc.exe` 等の CLI は e² studio 2025.07 に同梱なし)．
+- Smart Configurator の **初回プロジェクト作成は GUI 必須** (人間しかできない)．ただし **2 回目以降の `ra_cfg/` `ra_gen/` 再生成は CLI で完全ヘッドレス化可能** (`rascc.exe --generate configuration.xml`)．§J 「rascc CLI による再生成」を参照．`rasc.exe` 本体は `C:/Users/honda/.renesas/platform/sc/ra/fsp_<ver>/eclipse/rasc.exe` に standalone で存在し，e² studio に依存せず単体起動できる．
 - Windows make の高並列度問題があるため `-j` は `4` 以下を推奨．
 - コミットメッセージは日本語．`<area>: <要約>` 形式 (例: `target/ek_ra6m5_gcc: r7fa6m5bh.ld 追加`)．
 - 共著者末尾は `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`．
@@ -73,11 +73,17 @@ main からの差分 commit:
 
 ## ユーザー作業 (Phase 2-A) — Smart Configurator baseline 生成
 
-> **本節はユーザーが手作業で実施する必須タスク**．Claude では代替不能 (e²
-> studio Smart Configurator は GUI 必須．`rasc.exe` 等の CLI は同梱なし)．
-> Phase 2-B 骨格 (commit `9c7561e`) は完了済み．本節を実施した後，Phase 3
-> またはセッション再開で Claude に「Phase 2-A 完了．後続作業を継続」と
-> 依頼する．
+> **本節はユーザーが手作業で実施する必須タスク**．Claude では代替不能
+> (Smart Configurator の **初回**プロジェクト作成は GUI 必須．`rascc.exe`
+> も完全な `configuration.xml` がないと動かないため，初回はどちらにせよ
+> GUI が要る)．Phase 2-B 骨格 (commit `9c7561e`) は完了済み．本節を実施
+> した後，Phase 3 またはセッション再開で Claude に「Phase 2-A 完了．
+> 後続作業を継続」と依頼する．
+>
+> **注**: 一度 `configuration.xml` ＋ `ra_cfg/` ＋ `ra_gen/` を本リポジトリに
+> コミットしてしまえば，**FSP バージョンアップやモジュール構成変更は
+> §J の `rascc.exe --generate` 手順で完全ヘッドレス化可能**．本節 §B の
+> GUI 操作は **生涯一度** で済む．
 
 ### A. 前提状態の確認
 
@@ -88,23 +94,32 @@ main からの差分 commit:
 - [ ] `target/ek_ra6m5_gcc/ra_cfg/` `ra_gen/` は **README.md のみ**で，他に
       ファイルが無い (まだ Smart Configurator 出力を入れていない)
 
-### B. e² studio Smart Configurator で baseline 生成
+### B. Smart Configurator で baseline 生成
 
-下記は本ファイル §実施手順 Phase 2-A および
-[`target/ek_ra6m5_gcc/README.md`](target/ek_ra6m5_gcc/README.md) §3 と同内容．
-要点だけ再掲:
+GUI を **どちらか好きな方** で起動する:
 
-1. **e² studio (2025-07 以降) を起動**．既存ワークスペースとは **別の場所**
-   に新規ワークスペースを作る (本リポジトリ内である必要なし)．
-2. **新規プロジェクト作成**: `File → New → C/C++ Project → Renesas RA C/C++
-   Project`．設定値:
+- **B-1 (推奨・軽量)**: `rasc.exe` standalone (FSP 単体配布 GUI．e² studio 不要)
+  - 実行ファイル: `C:/Users/honda/.renesas/platform/sc/ra/fsp_6.1.0/eclipse/rasc.exe`
+  - 起動: エクスプローラから `rasc.exe` をダブルクリック，または PowerShell:
+    ```powershell
+    & "C:/Users/honda/.renesas/platform/sc/ra/fsp_6.1.0/eclipse/rasc.exe"
+    ```
+  - メニュー: `File → New → FSP Project` で新規プロジェクト ウィザードが開く．
+  - 出力先 IDE は **GCC + CMake** または **GCC + Makefile** を選択 (本リポジトリは ATK2 が独自に Makefile を持つので IDE 形式は最終的に使わない．`ra_cfg/` `ra_gen/` `configuration.xml` だけ取り出す)．
+- **B-2**: e² studio (2025-07 以降) 経由
+  - 既存ワークスペースとは **別の場所** に新規ワークスペースを作る．
+  - メニュー: `File → New → C/C++ Project → Renesas RA C/C++ Project`．
+
+設定値はどちらの GUI でも共通:
+
+1. **新規プロジェクト ウィザード**:
    - Project Name: `ek_ra6m5_baseline` (任意．**生成元としてのみ使用**)
    - Board: **EK-RA6M5**
    - Toolchain: **GCC ARM Embedded**
    - Device: **R7FA6M5BH3CFC**
    - Project Type: **Flat (Non-TrustZone) Project**
    - RTOS: **No RTOS**
-3. **`configuration.xml` を開いて構成**:
+2. **`configuration.xml` を開いて構成**:
    - **Clocks**: HOCO 20MHz → PLL → ICLK 200MHz, PCLKD = ICLK/2 = 100MHz
    - **Stacks → New Stack → Driver → Connectivity → r_sci_uart**: `SCI9` を選択
    - **Stacks → New Stack → Driver → Timers → r_gpt**: `GPT320` (32-bit)，Mode=Free Run
@@ -112,8 +127,8 @@ main からの差分 commit:
    - **Stacks → New Stack → Driver → Input → r_ioport**: デフォルト
    - **Pins**: `P602=TXD9`, `P603=RXD9` が AF6 (SCI9) に設定されていることを確認
    - **Properties** タブで各モジュールの Interrupt Priority を確認
-4. **`Generate Project Content`** をクリック．
-5. プロジェクトが一度ビルドできることを e² studio 上で確認 (任意，整合性検証目的)．
+3. **`Generate Project Content`** をクリック．
+4. プロジェクトが一度ビルドできることを GUI 上で確認 (任意，整合性検証目的)．
 
 ### C. 生成物のコピー (本リポジトリへ取込)
 
@@ -217,6 +232,62 @@ Phase 2-A 完了．下記を反映して Phase 2-B を仕上げてほしい．
   試行で確定してもらいたい．
 - 続けて Phase 3 (obj/obj_ek_ra6m5/Makefile 作成) に進んでほしい．
 ```
+
+### J. rascc CLI による再生成 (2 回目以降ヘッドレス化)
+
+**§A〜§G が完了し `configuration.xml` が本リポジトリにコミット済み** で
+あれば，以後 `ra_cfg/` `ra_gen/` の **再生成は CLI のみで完結する**．
+GUI 操作は不要．Claude が Bash 経由で実行することも可能．
+
+#### J-1. 再生成コマンド
+
+```sh
+# Windows (msys2 bash, PowerShell, cmd 何でも可) — FSP 6.1.0 を使用
+"C:/Users/honda/.renesas/platform/sc/ra/fsp_6.1.0/eclipse/rascc.exe" \
+    --generate \
+    --device R7FA6M5BH3CFC \
+    --compiler GCC \
+    target/ek_ra6m5_gcc/configuration.xml
+```
+
+`rascc.exe` は `configuration.xml` のあるディレクトリを起点に
+`ra_cfg/` `ra_gen/` (および IDE 別ファイル群) を再生成する．`--projectdir`
+オプションでターゲットディレクトリを明示指定することも可能．
+
+#### J-2. ユースケース
+
+| 場面 | 実行手順 |
+|---|---|
+| **FSP モジュール構成変更** (例: r_dtc を追加) | (1) GUI で `configuration.xml` を編集 → (2) `rascc --generate` で再生成 → (3) commit |
+| **FSP バージョンアップ** (例: 6.1.0 → 6.2.0) | `rascc.exe` のパスを `fsp_6.2.0/...` に変更して同コマンド．configuration.xml は version 互換 (raConfiguration version 属性) なら無修正で OK |
+| **CI でコミット内容が configuration.xml と ra_cfg/ra_gen で乖離していないかチェック** | CI 上で `rascc --generate` を実行し `git diff --exit-code ra_cfg/ ra_gen/` で検証 |
+| **Claude による FSP モジュール変更の自動化** | Claude が configuration.xml を編集 → Bash で `rascc --generate` 実行 → 差分を確認 |
+
+#### J-3. CLI 単体ではできないこと (要 GUI)
+
+- **新規プロジェクトの初回作成**．`rascc --generate` は **完全な
+  configuration.xml を要求** する．不完全な `configuration.xml` を渡すと
+  下記のエラーで失敗する:
+  ```
+  Cannot invoke "org.eclipse.core.runtime.IPath.append(String)" because
+  the return value of "...getVersionedCMSISZoneResourceLocation(...)" is null
+  ```
+  これは BSP/FSP version metadata や device pack のひも付けが GUI ウィザード
+  でしか挿入されないため．`Renesas##BSP##Board##ra6m5_ek##*##configuration.xml`
+  のようなテンプレート断片だけでは不足．
+- **モジュールの細かな依存解決**．Stack 追加に伴う必要モジュールの自動追加，
+  Pin 設定の自動展開などは GUI が便利 (XML 編集でも可だが手間)．
+
+#### J-4. Claude が実行するときのチェックリスト
+
+Claude が `rascc --generate` を実行した場合，以下を確認:
+
+- [ ] exit code = 0
+- [ ] `target/ek_ra6m5_gcc/ra_cfg/fsp_cfg/bsp/bsp_cfg.h` が再生成 (mtime 更新)
+- [ ] `target/ek_ra6m5_gcc/ra_gen/vector_data.c` の
+      `g_interrupt_event_link_select[]` の並びが変わっていれば INTNO を再確認
+- [ ] `git diff target/ek_ra6m5_gcc/ra_cfg/ target/ek_ra6m5_gcc/ra_gen/` で
+      想定外の差分がないことを確認
 
 ---
 
