@@ -68,18 +68,47 @@ extern const bsp_interrupt_event_t g_interrupt_event_link_select[];
  *  ATK2 は arch/arm_m_gcc/common/start.S をリセットエントリとし，FSP の
  *  startup.c (Reset_Handler / __VECTOR_TABLE / g_main_stack を提供) は
  *  リンクしない．ところが FSP `system.c` の SystemInit 内で次の 2 シンボル
- *  を参照するため，本層で空の placeholder を提供する:
- *    - __VECTOR_TABLE : SCB->VTOR の暫定書込み先．prc_initialize() が直後
- *                       にカーネルベクタへ上書きするため，値は無関係．
+ *  を参照するため，本層で適切な値を提供する:
+ *
+ *    - __VECTOR_TABLE (= __Vectors after CMSIS6 alias):
+ *        SCB->VTOR = (uint32_t)&__VECTOR_TABLE で VTOR が書き換わる．
+ *        ここで「空 1 entry stub + 後続ゴミ」を渡すと SystemInit 中に
+ *        例外が発生した場合に壊れたハンドラへ飛んで HardFault 連鎖
+ *        になる．代わりに ATK2 の kernel_vector_table (= 0x00000000，
+ *        cfg pass2 生成 + .vectors セクション配置) のエイリアスに
+ *        することで，SystemInit 中も常に正しい vector table が
+ *        active になる．prc_initialize() が後で同アドレスへ再書込み
+ *        するが no-op となる．
+ *
  *    - g_main_stack[] : MSP 初期化と stack guard 用．ATK2 は既に start.S
  *                       で kernel_ostkpt を MSP に設定済み．SystemInit が
  *                       触るアドレス空間が有効でありさえすれば良い．
+ *                       BSS 先頭 (.bss.g_main_stack) に配置することで
+ *                       MSPLIM が SRAM 低位になり MSP との関係を保つ．
  */
-__attribute__((used)) void * const __VECTOR_TABLE[1] = { (void *)0 };
+/*
+ *  __Vectors (= __VECTOR_TABLE after CMSIS6 alias) は
+ *  リンカスクリプト r7fa6m5bh.ld で
+ *      PROVIDE(__Vectors = kernel_vector_table);
+ *  により kernel_vector_table のエイリアスとして定義．
+ *  C 側で `extern` 宣言だけしておけば，FSP system.c が
+ *  &__VECTOR_TABLE を取った時に kernel_vector_table の
+ *  アドレス (= 0x00000000) が返る．
+ */
 #ifndef BSP_CFG_STACK_MAIN_BYTES
 #define BSP_CFG_STACK_MAIN_BYTES (0x400)   /* fall-back: bsp_cfg.h と同値 */
 #endif
-__attribute__((used, aligned(8)))
+/*
+ *  g_main_stack を `.bss.g_main_stack` 専用セクションに置く．
+ *  リンカスクリプト r7fa6m5bh.ld の .bss セクションで本セクションを
+ *  最先頭にマッピングする．これにより `&g_main_stack[0] = __bss_start`
+ *  となり，FSP system.c の `__set_MSPLIM(&g_main_stack[0])` で設定される
+ *  MSPLIM が SRAM 低位 (BSS 先頭) になり，ATK2 が start.S で設定する
+ *  MSP (= kernel_ostkpt．BSS 内の高位アドレス) より必ず低い状態が保証
+ *  される．これを行わないと MSPLIM > MSP となり，SystemInit 中の最初の
+ *  push で stack-underflow → 強制 HardFault が発生する．
+ */
+__attribute__((used, aligned(8), section(".bss.g_main_stack")))
 uint8_t g_main_stack[BSP_CFG_STACK_MAIN_BYTES];
 
 /*
@@ -141,6 +170,14 @@ void R_BSP_WarmStart(bsp_warm_start_event_t event)
  */
 static void sci7_low_init(void)
 {
+    /*
+     *  SCI7 モジュールクロック有効化．
+     *  リセット直後 R_MSTP->MSTPCRB はすべて 1 (= 全モジュール停止) で，
+     *  この状態で SCI7 レジスタに書込んでも読み出しても 0 (drop)．
+     *  R_BSP_MODULE_START マクロで SCI7 (= MSTPCRB.MSTPB24) を有効化．
+     */
+    R_BSP_MODULE_START(FSP_IP_SCI, 7);
+
     /* 送受信とも一旦停止 */
     R_SCI7->SCR  = 0U;
     /* 8bit, no parity, 1 stop, /1 baseclock */
@@ -277,7 +314,15 @@ hardware_init_hook(void)
 void
 target_hardware_initialize(void)
 {
-    /* (1) FSP SystemInit: ICLK 200MHz / VTOR(FSP)/ WarmStart チェイン */
+    /*
+     *  (1) FSP SystemInit: ICLK 200MHz / VTOR(FSP)/ WarmStart チェイン
+     *
+     *  注: SystemInit() 内で TrustZone 対応 RA6M5 は
+     *      __set_MSPLIM(&g_main_stack[0]) を実行する．本層では g_main_stack
+     *      stub をリンカスクリプトで BSS 先頭に配置することで MSPLIM を
+     *      SRAM 低位に固定し，ATK2 が start.S で設定する MSP (kernel_ostkpt)
+     *      が常に MSPLIM より高位になるよう保証している．
+     */
     SystemInit();
 
     /* (2) IOPORT 初期化．Smart Configurator 生成 g_bsp_pin_cfg を参照する．

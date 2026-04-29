@@ -110,6 +110,14 @@ SECTIONS
     .bss :
     {
         __bss_start = .;
+        /*
+         *  g_main_stack を BSS 先頭に配置．FSP system.c が SystemInit
+         *  内部で `__set_MSPLIM(&g_main_stack[0])` を実行する．
+         *  ここで g_main_stack を BSS 先頭にすると MSPLIM = __bss_start
+         *  (低位アドレス) となり，ATK2 の MSP (kernel_ostkpt) より
+         *  必ず低位を保てて stack-overflow 偽検出を防げる．
+         */
+        KEEP(*(.bss.g_main_stack))
         *(.bss)
         *(.bss.*)
         *(COMMON)
@@ -131,6 +139,18 @@ SECTIONS
     PROVIDE(__StackLimit = __bss_end);
 
     /*
+     *  CMSIS6 / FSP system.c は SCB->VTOR の暫定書込み先として
+     *  `__VECTOR_TABLE` を参照するが，CMSIS6 マクロにより実体名は
+     *  `__Vectors` に展開される．本ポートでは ATK2 cfg pass2 が
+     *  生成する kernel_vector_table (.vectors セクション @ 0x00000000)
+     *  をそのまま流用したいので，`__Vectors` をエイリアスとして
+     *  PROVIDE する．これにより FSP の SCB->VTOR 書込みが
+     *  no-op (= 既に 0x00000000) となり，SystemInit 中に発生する
+     *  あらゆる例外も常に正しい ATK2 ハンドラへルーティングされる．
+     */
+    PROVIDE(__Vectors = kernel_vector_table);
+
+    /*
      *  picolibc / ATfE TLS シンボル placeholder
      *  本ポートでは TLS (__thread 変数) を使用しないため，picolibc が要求
      *  する次のシンボルをすべて 0/空で提供する．_init_tls/_set_tls は
@@ -149,8 +169,21 @@ SECTIONS
      *  は全て空 (Base = Limit = 0) として g_init_info から空ループで参照
      *  されるだけにする．
      */
-    PROVIDE(__ram_zero$$Base                = __bss_start);
-    PROVIDE(__ram_zero$$Limit               = __bss_end);
+    /*
+     *  bsp_linker.c の g_init_info テーブルが要求するシンボル．
+     *  ATK2 の start.S が既に BSS クリア (BSS_START..BSS_END) と
+     *  DATA コピー (IDATA_START..IDATA_END → DATA_START..) を行うため，
+     *  FSP system.c の SystemInit() が g_init_info を駆使して BSS/DATA を
+     *  二重に処理する必要は無い．
+     *
+     *  特に重要: __ram_zero$$Base..Limit を __bss_start..__bss_end に
+     *  すると SystemInit 内の bzero が **現在実行中の OS スタック
+     *  (kernel_ostack ⊂ BSS)** をゼロクリアしてしまい，戻りアドレスを
+     *  含む生きたスタックフレームを破壊→ bx lr が NULL に飛んで
+     *  HardFault．これを避けるため Base = Limit = 0 で空ループ化する．
+     */
+    PROVIDE(__ram_zero$$Base                = 0);
+    PROVIDE(__ram_zero$$Limit               = 0);
     PROVIDE(__ram_zero_nocache$$Base        = 0);
     PROVIDE(__ram_zero_nocache$$Limit       = 0);
     PROVIDE(__ram_noinit_nocache$$Base      = 0);
@@ -160,9 +193,9 @@ SECTIONS
     PROVIDE(__ram_tdata$$Base               = 0);
     PROVIDE(__ram_tdata$$Limit              = 0);
     PROVIDE(__ram_tdata$$Load               = 0);
-    PROVIDE(__ram_from_flash$$Base          = __data_start);
-    PROVIDE(__ram_from_flash$$Limit         = __data_end);
-    PROVIDE(__ram_from_flash$$Load          = __idata_start);
+    PROVIDE(__ram_from_flash$$Base          = 0);
+    PROVIDE(__ram_from_flash$$Limit         = 0);
+    PROVIDE(__ram_from_flash$$Load          = 0);
     PROVIDE(__ram_from_qspi_flash$$Base     = 0);
     PROVIDE(__ram_from_qspi_flash$$Limit    = 0);
     PROVIDE(__ram_from_qspi_flash$$Load     = 0);
