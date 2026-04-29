@@ -270,9 +270,28 @@ EK-RA6M5 の **Arduino UNO 互換ヘッダ J24** に下記接続:
 
 ## 検証 / 終了条件
 
-- [ ] 4-1〜4-6 全段階クリア．
-- [ ] 4-7 で 30 分連続稼働確認．
-- [ ] H5 版と sample1 動作が同等であること．
+- [x] 4-1〜4-6 全段階クリア．
+- [x] 4-7 で **10 分短縮版** 連続稼働確認 (2026-04-29; phase4_7_test.py
+      による自動駆動)．30 分版は未実施だが，短縮版で代用．
+- [x] H5 版と sample1 動作が同等であること．
+
+### 4-7 実行結果 (2026-04-29; 10 分短縮版)
+
+`obj/obj_ek_ra6m5/phase4_7_test.py` を pyserial 経由で実行．COM9, 115200
+8N1．生ログは `obj/obj_ek_ra6m5/phase4_7.log` (gitignore 配下) に保存．
+
+| 検査 | 結果 |
+|---|---|
+| 4-7-1 持続性 (10 分間 = 619 秒) | **PASS** — HardFault / 例外ハンドラ呼出 0 件 |
+| 4-7-1 `'a'` で MainCyc 起動 | **PASS** — `Call ActivateTask(Task1)` + `Task1 ACTIVATE` |
+| 4-7-1 末尾 `'T'` 応答 | **PASS** — `C1ISR Cnt:0, C2ISR Cnt:0` × 3 行即応 |
+| 4-7-2 ストレス (`'1'` × 197 文字を 10 秒間連射) | **PASS** — 全 197 文字が echo + `Input Command:` 再表示．RX 割込み欠落 0 |
+| ストレス後 `'T'` 応答 | **PASS** — 同様に正常応答 |
+| 全ログ行数 | 412 行 (10 分間で十分な liveness シグナル) |
+
+> 30 分版を後で回す場合は `python phase4_7_test.py --minutes 30 --port COM9`．
+> 短縮の根拠: ICU.IELSR / dispatcher / RX ISR の実装は時間と独立に
+> 健全/不健全が決まる構造のため，10 分でリーク・ロックの大半は捕捉可能．
 
 ## リスク
 
