@@ -86,7 +86,8 @@ EK ボードシリーズは Arduino UNO 互換ヘッダの D0/D1 を共通に持
 
 ### 2.6 `target/ek_ra6m4_llvm/fsp/configuration.xml` を新規生成
 
-`phase2.md` §B の手順を新ターゲットに対して実施 (生涯一度):
+[`../claude/phase2.md`](../claude/phase2.md) §B の手順を新ターゲットに
+対して実施 (生涯一度):
 
 1. rasc.exe を起動，新規プロジェクト
    - **Project location**: `target/ek_ra6m4_llvm/`
@@ -135,7 +136,7 @@ make -j4
 | `bsp_cfg.h` not found | configuration.xml 取込・rascc 実行を確認．`Makefile.target` の `RA_CFG_DIR` パスが正しいか |
 | `R7FA6M4AF.h` not found | rasc がデバイス指定通りに `bsp/cmsis/Device/RENESAS/Include/R7FA6M4AF.h` を生成しているか確認 |
 | `bsp/mcu/ra6m4/bsp_feature.h` not found | `Makefile.target` の `MCU_GROUP=ra6m4` が正しいか，FSP がそのグループを持っているか確認 |
-| INTNO 不一致 (HardFault) | `target/<T>/fsp/ra_gen/vector_data.c` の `g_interrupt_event_link_select[]` 順序を読取り，`target_serial.h` `INTNO_SIO` と `target_hw_counter.h` `GPT*_INTNO` を実値に修正 (phase2.md §E/F) |
+| INTNO 不一致 (HardFault) | `target/<T>/fsp/ra_gen/vector_data.c` の `g_interrupt_event_link_select[]` 順序を読取り，`target_serial.h` `INTNO_SIO` と `target_hw_counter.h` `GPT*_INTNO` を実値に修正 ([`../claude/phase2.md`](../claude/phase2.md) §E/F) |
 
 ### 2.10 README 整備
 

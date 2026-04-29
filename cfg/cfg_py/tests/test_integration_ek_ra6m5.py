@@ -85,7 +85,7 @@ def workspace(tmp_path_factory):
     """
     if not _have_fixtures():
         pytest.skip("EK-RA6M5 fixtures not present "
-                    "(see phase5.md for setup)")
+                    "(see arch/arm_m_llvm/ra_fsp/claude/phase5.md for setup)")
     ws = tmp_path_factory.mktemp("ek_ra6m5_cfg_py")
     for f in _ARXML_FILES + ["cfg1_out.srec", "cfg1_out.syms"]:
         shutil.copy(os.path.join(_FIXTURE, f), str(ws))

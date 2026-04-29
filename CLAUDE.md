@@ -204,4 +204,4 @@ The `CFGNAME` make variable is the space-separated list of arxml basenames (with
 - **EXC_RETURN**: `0xFFFFFFFD` (Full Secure: ES=1, S=1)．`Makefile.target` で `-DTOPPERS_TZ_S` を指定．OFS1.TZEN=0 (TrustZone 無効化) でも実行時は Secure state なので `S=1` が必須．
 - **clone 後の必須作業**: `rascc --generate target/ek_ra6m5_llvm/fsp/configuration.xml` を実行すること．生成物 `ra/` `ra_cfg/` `ra_gen/` は `.gitignore` で除外．手順詳細は [`arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md`](arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md)．
 - **デバッグ**: e² studio v2025-12 の `target/ek_ra6m5_llvm/e2studio/sample_debug/` プロジェクトを `Existing Projects into Workspace` で取込むと J-Link 経由でデバッグできる (ビルドは make で済ませた前提；e² studio はデバッグ目的のみ)．詳細は [`target/ek_ra6m5_llvm/README.md` §9](target/ek_ra6m5_llvm/README.md)．
-- **段階的実装計画**: `phase1.md`〜`phase6.md` 参照．Phase 1〜5 完了．Phase 6 ドキュメント整備中．
+- **段階的実装計画**: [`arch/arm_m_llvm/ra_fsp/claude/phase1.md`](arch/arm_m_llvm/ra_fsp/claude/phase1.md)〜[`phase6.md`](arch/arm_m_llvm/ra_fsp/claude/phase6.md) 参照．Phase 1〜6 完了 (Phase 4-7 安定性試験は 10 分短縮版で実機 PASS)．

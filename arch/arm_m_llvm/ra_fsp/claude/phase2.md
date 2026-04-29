@@ -230,7 +230,7 @@ GPT321 (g_timer_alarm), IOPORT (g_ioport), Flat Non-TrustZone．"
 > `fsp/{ra,ra_cfg,ra_gen,IDE副生成物}`．本フローでは GUI 側は Save の
 > みに留め，生成は CLI で Claude がまとめて実行する．
 
-詳細は [`arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md`](arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md)．
+詳細は [`../docs/fsp_setup.md`](../docs/fsp_setup.md)．
 
 ### D. 検証 〔Claude〕
 

@@ -7,7 +7,8 @@
 > **役割分担**:
 > - **ユーザ手作業必須** (生涯一度): Smart Configurator GUI で
 >   `configuration.xml` を初回作成．本書 §3 の前段はこれが既にコミット
->   済の前提．未コミットの場合は phase2.md §B を参照．
+>   済の前提．未コミットの場合は [`../claude/phase2.md`](../claude/phase2.md)
+>   §B を参照．
 > - **clone 後の `rascc --generate` 実行**: ユーザが手で実行しても良いし，
 >   Claude Code が Bash 経由で代行しても良い．いずれも同じコマンドを叩く
 >   だけ．本書では人間が実行する形で書いているが，Claude が同コマンドを
