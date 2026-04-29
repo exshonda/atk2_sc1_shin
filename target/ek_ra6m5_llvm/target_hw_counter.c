@@ -43,6 +43,8 @@
 #include "prc_sil.h"
 #include "target_hw_counter.h"
 #include "ek_ra6m5.h"
+/* FSP API: R_BSP_MODULE_START, FSP_IP_GPT, R_GPT0/1 構造体 */
+#include "bsp_api.h"
 
 /*
  *  GPT320 / GPT321 ベースアドレス
@@ -88,11 +90,21 @@
 
 #define GPT_REG32(base, off) (*(volatile uint32 *)((uintptr_t)(base) + (uintptr_t)(off)))
 
-/* GTWP: 書込み保護解除 (0xA500 を上位に書く必要あり) */
-#define GTWP_UNLOCK         0xA500U
-/* GTWP.WP=1 で各種設定レジスタの書込みを許可 (0=保護, 1=書込み可)
-   キーコード 0xA5 と組合せて 0xA501 で WP=1, 0xA500 で WP=0 */
-#define GTWP_WRITE_ENABLE   0xA501U
+/*
+ *  GTWP (Timer General Write Protection Register)．
+ *  bit 0  WP    : 0 = 書込み許可，1 = 書込み保護
+ *  bit 8-15 PRKEY: 0xA5 を書かないと WP は更新されない
+ *
+ *  書込みアンロック値 = 0xA500 (PRKEY=0xA5, WP=0)
+ *  書込みプロテクト値 = 0xA501 (PRKEY=0xA5, WP=1)
+ *
+ *  FSP r_gpt.c (GPT_PRV_GTWP_RESET_VALUE / GPT_PRV_GTWP_WRITE_PROTECT)
+ *  参照．以前 FSP の名前を逆に解釈して 0xA501 を「書込み許可」と
+ *  して使っていたが，これは実際には書込み保護をかけており，以降
+ *  GTCR 書込みが silent drop されていた．
+ */
+#define GTWP_WRITE_ENABLE   0xA500U   /* PRKEY=A5 + WP=0 = 書込み許可 */
+#define GTWP_WRITE_PROTECT  0xA501U   /* PRKEY=A5 + WP=1 = 書込み保護 */
 
 /* GTCR.CST = bit0 : Count Start (1=count, 0=stop) */
 #define GTCR_CST            (1U << 0U)
@@ -116,20 +128,6 @@
 #define GTST_TCFPO          (1U << 6U)
 
 /*
- *  GPT モジュールクロック有効化
- *  RA6M5 では Module Stop Control Register D (MSTPCRD) で GPT を制御．
- *  R_MSTP_BASE = R_MSTP (0x40047000), MSTPCRD は offset 0x4C．
- *    MSTPCRD.MSTPD5 = 1 : GPT320 (32-bit timer) を停止
- *    MSTPCRD.MSTPD6 = 1 : GPT321 を停止 (?: 仕様要確認)
- *    実際には MSTPD5 が 32-bit GPT 全体 (GPT320 + GPT321) を制御するため
- *    1 ビット解除すれば両方有効になる．
- *  本実装は Phase 2-A の hal_data.c が R_GPT_Open 内で行う MSTP 解除を
- *  期待するが，ATK2 が直叩きする場合は事前にここでも解除する．
- */
-#define R_MSTPCRD_ADDR      0x4001E01CUL
-#define MSTPD_GPT320_321    (1UL << 5U)   /* MSTPD5 (Phase 2-A で要確認) */
-
-/*
  *  MAIN_HW_COUNTER 保持値（set_hwcounter で管理）
  */
 static TickType MAIN_HW_COUNTER_maxval;
@@ -149,9 +147,16 @@ init_hwcounter_MAIN_HW_COUNTER(TickType maxval, TimeType nspertick)
     (void)nspertick;
     MAIN_HW_COUNTER_maxval = maxval;
 
-    /* GPT モジュールストップ解除 (保険．Smart Configurator が行うはず) */
-    GPT_REG32(R_MSTPCRD_ADDR, 0U) &= ~MSTPD_GPT320_321;
-    (void)GPT_REG32(R_MSTPCRD_ADDR, 0U);
+    /*
+     *  GPT モジュールクロック有効化．
+     *  ATK2 がレジスタ直叩きする方針のため，FSP 既定の MSTPCRD.MSTPD5=1
+     *  (GPT 全 ch 停止) のままだと GPT レジスタ R/W が drop される．
+     *  R_BSP_MODULE_START マクロで GPT320 (= ch 0) と GPT321 (= ch 1)
+     *  両方を有効化．RA6M5 では両者とも MSTPCRD.MSTPD5 1 ビットで制御
+     *  されるが，FSP マクロは将来的なチップ差異も吸収する．
+     */
+    R_BSP_MODULE_START(FSP_IP_GPT, 0);
+    R_BSP_MODULE_START(FSP_IP_GPT, 1);
 
     /* ---- GPT320 初期化 (フリーランニング, 割込み未使用) ---- */
     GPT_REG32(R_GPT320_BASE, GPT_GTWP)     = GTWP_WRITE_ENABLE;
@@ -260,23 +265,38 @@ trigger_hwcounter_MAIN_HW_COUNTER(void)
 
 /*
  *  割込み要求のクリア（ISR 内から呼ばれる）
- *  GPT のオーバーフローフラグ TCFPO を 0 でクリア．
- *  RA6M5 の R_BSP_IrqStatusClear (IELSR.IR=0) も target_config.c の
- *  ISR ラッパで呼ぶこと．
+ *
+ *  RA6M5 では割込みが
+ *      Peripheral (GPT321 GTST.TCFPO)
+ *      → ICU (R_ICU->IELSR[N].IR)
+ *      → NVIC (auto-cleared on handler entry)
+ *  と多段になっているため，ISR 内で前 2 段を明示的にクリアしないと
+ *  IR が立ったままで NVIC が即再発火させてしまう (= HardFault 経路へ)．
+ *
+ *    1. GPT321 GTST.TCFPO を 0 でクリア
+ *    2. ICU IELSR[GPT321_OVF スロット].IR (bit 16) をクリア
+ *
+ *  GPT321 OVF は Phase 2-A の vector_data.c で NVIC スロット 0 に
+ *  割り当てられている (= IRQ0)．R_BSP_IrqStatusClear((IRQn_Type)0) で
+ *  IELSR[0].IR + DMB シーケンスを fsp 標準の方法で行う．
  */
 void
 int_clear_hwcounter_MAIN_HW_COUNTER(void)
 {
     GPT_REG32(R_GPT321_BASE, GPT_GTST) = 0U;
+    R_BSP_IrqStatusClear((IRQn_Type)(GPT321_INTNO - 16U));
 }
 
 /*
  *  割込み要求のキャンセル（ペンディング割込みをキャンセル）
+ *  ATK2 がアラーム取消時に呼ぶ．GPT321 を停止して GTST と IR を
+ *  クリアし，NVIC のペンディングも落とす．
  */
 void
 int_cancel_hwcounter_MAIN_HW_COUNTER(void)
 {
     GPT_REG32(R_GPT321_BASE, GPT_GTST) = 0U;
+    R_BSP_IrqClearPending((IRQn_Type)(GPT321_INTNO - 16U));
 }
 
 /*

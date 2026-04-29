@@ -219,8 +219,12 @@ ISR(RxHwSerialInt)
             (uint8)(ssr & (uint8)~(SSR_ORER | SSR_FER | SSR_PER));
     }
 
-    /* RA6M5 の ICU.IELSR.IR ビットをクリア (実装は Phase 3 で BSP API 経由
-     * R_BSP_IrqStatusClear に置換予定．Phase 2 では暫定で IELSR 直叩き) */
+    /*
+     *  RA6M5 の ICU.IELSR[N].IR を明示クリア．
+     *  これをしないと NVIC が即再発火して HardFault 連鎖になる．
+     *  SCI7 RXI は NVIC スロット 1 (= INTNO_SIO - 16)．
+     */
+    R_BSP_IrqStatusClear((IRQn_Type)(INTNO_SIO - 16U));
 }
 
 /*
