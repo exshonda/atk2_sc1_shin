@@ -25,8 +25,13 @@ MEMORY
     SRAM  (xrw) : ORIGIN = 0x20000000, LENGTH = 512K
 }
 
-/* スタートアップ・エントリポイント */
-STARTUP(start.o)
+/*
+ *  スタートアップ・エントリポイント
+ *
+ *  GNU ld の STARTUP(start.o) ディレクティブは ld.lld 非対応．
+ *  代わりに obj/obj_ek_ra6m5/Makefile の link コマンドで
+ *  $(HIDDEN_OBJS) (= objs/start.o) を明示的に渡す．
+ */
 ENTRY(_kernel_start)
 
 /* SRAM 末尾 = 初期 MSP (リセット時の初期スタックポインタ) */
@@ -112,9 +117,88 @@ SECTIONS
     /* CMSIS / FSP system.c 互換エイリアス */
     PROVIDE(__StackLimit = __bss_end);
 
+    /*
+     *  picolibc / ATfE TLS シンボル placeholder
+     *  本ポートでは TLS (__thread 変数) を使用しないため，picolibc が要求
+     *  する次のシンボルをすべて 0/空で提供する．_init_tls/_set_tls は
+     *  動作はするが何も初期化しない．
+     */
+    PROVIDE(__tls_base              = 0);
+    PROVIDE(__tdata_source          = 0);
+    PROVIDE(__tdata_size            = 0);
+    PROVIDE(__tbss_offset           = 0);
+    PROVIDE(__tbss_size             = 0);
+    PROVIDE(__arm32_tls_tcb_offset  = 0);
+
+    /*
+     *  bsp_linker.c が g_init_info に含めるリンカ生成シンボル群．
+     *  本ポートは内蔵 RAM/Flash 単体構成のため，nocache / OSPI / TCM 系
+     *  は全て空 (Base = Limit = 0) として g_init_info から空ループで参照
+     *  されるだけにする．
+     */
+    PROVIDE(__ram_zero$$Base                = __bss_start);
+    PROVIDE(__ram_zero$$Limit               = __bss_end);
+    PROVIDE(__ram_zero_nocache$$Base        = 0);
+    PROVIDE(__ram_zero_nocache$$Limit       = 0);
+    PROVIDE(__ram_noinit_nocache$$Base      = 0);
+    PROVIDE(__ram_noinit_nocache$$Limit     = 0);
+    PROVIDE(__ram_tbss$$Base                = 0);
+    PROVIDE(__ram_tbss$$Limit               = 0);
+    PROVIDE(__ram_tdata$$Base               = 0);
+    PROVIDE(__ram_tdata$$Limit              = 0);
+    PROVIDE(__ram_tdata$$Load               = 0);
+    PROVIDE(__ram_from_flash$$Base          = __data_start);
+    PROVIDE(__ram_from_flash$$Limit         = __data_end);
+    PROVIDE(__ram_from_flash$$Load          = __idata_start);
+    PROVIDE(__ram_from_qspi_flash$$Base     = 0);
+    PROVIDE(__ram_from_qspi_flash$$Limit    = 0);
+    PROVIDE(__ram_from_qspi_flash$$Load     = 0);
+    PROVIDE(__ram_from_ospi0_cs1$$Base      = 0);
+    PROVIDE(__ram_from_ospi0_cs1$$Limit     = 0);
+    PROVIDE(__ram_from_ospi0_cs1$$Load      = 0);
+    PROVIDE(__ram_from_data_flash$$Base     = 0);
+    PROVIDE(__ram_from_data_flash$$Limit    = 0);
+    PROVIDE(__ram_from_data_flash$$Load     = 0);
+    PROVIDE(__ospi0_cs0_zero$$Base          = 0);
+    PROVIDE(__ospi0_cs0_zero$$Limit         = 0);
+    PROVIDE(__ospi0_cs0_zero_nocache$$Base  = 0);
+    PROVIDE(__ospi0_cs0_zero_nocache$$Limit = 0);
+    PROVIDE(__ospi0_cs0_noinit_nocache$$Base    = 0);
+    PROVIDE(__ospi0_cs0_noinit_nocache$$Limit   = 0);
+    PROVIDE(__ospi0_cs0_from_qspi_flash$$Base   = 0);
+    PROVIDE(__ospi0_cs0_from_qspi_flash$$Limit  = 0);
+    PROVIDE(__ospi0_cs0_from_qspi_flash$$Load   = 0);
+    PROVIDE(__ospi0_cs0_from_ospi0_cs1$$Base    = 0);
+    PROVIDE(__ospi0_cs0_from_ospi0_cs1$$Limit   = 0);
+    PROVIDE(__ospi0_cs0_from_ospi0_cs1$$Load    = 0);
+    PROVIDE(__ospi0_cs0_from_data_flash$$Base   = 0);
+    PROVIDE(__ospi0_cs0_from_data_flash$$Limit  = 0);
+    PROVIDE(__ospi0_cs0_from_data_flash$$Load   = 0);
+    PROVIDE(__ospi0_cs0_from_flash$$Base        = 0);
+    PROVIDE(__ospi0_cs0_from_flash$$Limit       = 0);
+    PROVIDE(__ospi0_cs0_from_flash$$Load        = 0);
+
     . = ALIGN(4);
     _end = .;
     PROVIDE(end = .);
+
+    /*
+     *  Option Setting Memory (OFS0/OFS1/DUALSEL/BANKSEL/BPS/PBPS)
+     *  bsp_linker.c が `.option_setting_*` セクションへ配置する初期値群．
+     *  RA6M5 のデバイス仕様でロード時に CPU が読む固定アドレス領域:
+     *    OFS0      0x0100A100
+     *    OFS1      0x0100A104
+     *    BPS       0x0100A130 ...etc
+     *  本ポートは Flat Non-TrustZone 単一プロジェクトなので Sec 系は不要．
+     *  Phase 2 段階では FLASH へ普通に詰めるだけにし，正規アドレス配置は
+     *  Phase 4 で必要に応じて MEMORY 追加 + AT 配置に変更．
+     */
+    .option_setting_ofs0      : { KEEP(*(.option_setting_ofs0))     } > FLASH
+    .option_setting_dualsel   : { KEEP(*(.option_setting_dualsel))  } > FLASH
+    .option_setting_ofs1      : { KEEP(*(.option_setting_ofs1))     } > FLASH
+    .option_setting_banksel   : { KEEP(*(.option_setting_banksel))  } > FLASH
+    .option_setting_bps       : { KEEP(*(.option_setting_bps))      } > FLASH
+    .option_setting_pbps      : { KEEP(*(.option_setting_pbps))     } > FLASH
 
     /*
      *  FSP 同梱 startup.c の __VECTOR_TABLE / g_main_stack / g_heap が

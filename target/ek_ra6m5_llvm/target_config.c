@@ -45,8 +45,15 @@
  *  FSP BSP API (bsp_api.h は chip_config.h 経由で取り込み済み)
  *  Smart Configurator 出力 (ra_cfg/, ra_gen/) のヘッダ群が
  *  Makefile.target の INCLUDES で追加されることが前提．
+ *
+ *  hal_data.h: g_ioport_ctrl, g_uart_log_ctrl 等のインスタンス制御構造体宣言
+ *              (Smart Configurator 生成 ra_gen/hal_data.h)．これを取り込むと
+ *              ioport_cfg_t / ioport_instance_ctrl_t / R_IOPORT_* も
+ *              間接的に解決される．
  */
 #include "bsp_api.h"
+#include "common_data.h"
+#include "hal_data.h"
 
 /*
  *  Smart Configurator 出力のシンボル
@@ -54,6 +61,26 @@
  *  ra_gen/vector_data.c，g_bsp_pin_cfg は ra_gen/pin_data.c で定義)．
  */
 extern const bsp_interrupt_event_t g_interrupt_event_link_select[];
+
+/*
+ *  FSP startup.c からの参照を満たす最小スタブ
+ *
+ *  ATK2 は arch/arm_m_gcc/common/start.S をリセットエントリとし，FSP の
+ *  startup.c (Reset_Handler / __VECTOR_TABLE / g_main_stack を提供) は
+ *  リンクしない．ところが FSP `system.c` の SystemInit 内で次の 2 シンボル
+ *  を参照するため，本層で空の placeholder を提供する:
+ *    - __VECTOR_TABLE : SCB->VTOR の暫定書込み先．prc_initialize() が直後
+ *                       にカーネルベクタへ上書きするため，値は無関係．
+ *    - g_main_stack[] : MSP 初期化と stack guard 用．ATK2 は既に start.S
+ *                       で kernel_ostkpt を MSP に設定済み．SystemInit が
+ *                       触るアドレス空間が有効でありさえすれば良い．
+ */
+__attribute__((used)) void * const __VECTOR_TABLE[1] = { (void *)0 };
+#ifndef BSP_CFG_STACK_MAIN_BYTES
+#define BSP_CFG_STACK_MAIN_BYTES (0x400)   /* fall-back: bsp_cfg.h と同値 */
+#endif
+__attribute__((used, aligned(8)))
+uint8_t g_main_stack[BSP_CFG_STACK_MAIN_BYTES];
 
 /*
  *  R_BSP_WarmStart のフックを ATK2 が握る場合の弱定義 override 例．

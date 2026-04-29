@@ -91,12 +91,14 @@ FPU_ARCH_MACRO ?= __TARGET_FPU_FPV5_SP
 #  ターゲット依存部 ($(TARGETDIR)/ra_cfg/, ra_gen/) で取り込む．
 #
 INCLUDES := $(INCLUDES) -I$(CHIPDIR) \
+            -I$(TARGETDIR)/fsp \
             -I$(FSPDIR)/inc \
             -I$(FSPDIR)/inc/api \
             -I$(FSPDIR)/inc/instances \
             -I$(FSPDIR)/src/bsp/cmsis/Device/RENESAS/Include \
             -I$(FSPDIR)/src/bsp/mcu/all \
-            -I$(FSPDIR)/src/bsp/mcu/$(MCU_GROUP)
+            -I$(FSPDIR)/src/bsp/mcu/$(MCU_GROUP) \
+            -I$(TARGETDIR)/fsp/ra/arm/CMSIS_6/CMSIS/Core/Include
 
 COPTS    := $(COPTS) -mlittle-endian
 LDFLAGS  := $(LDFLAGS) -mlittle-endian

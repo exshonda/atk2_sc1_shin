@@ -86,7 +86,9 @@ LDFLAGS  := $(LDFLAGS) -Wl,--gc-sections
 #
 #  カーネルに関する定義
 #
-KERNEL_DIR     := $(KERNEL_DIR) $(TARGETDIR) $(RA_GEN_DIR)
+KERNEL_DIR     := $(KERNEL_DIR) $(TARGETDIR) $(RA_GEN_DIR) \
+                  $(TARGETDIR)/fsp/ra/fsp/src/r_ioport \
+                  $(TARGETDIR)/fsp/ra/fsp/src/bsp/mcu/$(MCU_GROUP)
 KERNEL_ASMOBJS := $(KERNEL_ASMOBJS)
 
 #
@@ -104,7 +106,8 @@ KERNEL_ASMOBJS := $(KERNEL_ASMOBJS)
 #  TODO[Phase 2-A]: ra_gen/vector_data.c の取扱方式を確定．
 #
 KERNEL_COBJS   := $(KERNEL_COBJS) target_config.o target_hw_counter.o \
-                  common_data.o hal_data.o pin_data.o
+                  common_data.o hal_data.o pin_data.o \
+                  r_ioport.o bsp_linker.o
 
 #
 #  オフセットファイル生成のための定義
