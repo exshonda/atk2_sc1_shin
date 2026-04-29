@@ -6,10 +6,101 @@ Phase 3 で生成された `atk2-sc1.srec` を実機 EK-RA6M5 に書き込み，
 
 ## 前提
 
-- Phase 3 までで EK-RA6M5 用 ELF/srec が生成可能．
+- Phase 3 までで EK-RA6M5 用 ELF/srec が生成可能 (commit `872fa1f` で確認済)．
 - 実機 EK-RA6M5 + USB ケーブル + ホスト PC．
 - J-Link GDB Server (J-Link Software, e² studio 同梱) または OpenOCD CMSIS-DAP．
 - ホスト PC のシリアルターミナル (Tera Term / minicom 等)．
+- **Arduino D0/D1 に接続可能な USB-Serial 変換アダプタ** (FTDI 等)．SCI7 を
+  使う本ポートの構成では J-Link OB の VCOM (= SCI9) は使えないため．
+
+## 役割分担
+
+| 担当 | 範囲 |
+|---|---|
+| **ユーザ (人間)** | 実機接続 / J-Link 経由の書込み・デバッグ操作 / シリアル端末からのキー入力 / オシロ観測 (4-2 のみ) / 観察結果の Claude への報告 |
+| **Claude** | ビルド (`make -j4`) / sample1.c の暫定改造 (4-1, 4-2) / 観察ログを元にした原因調査・修正パッチ作成 / commit / 既存ロジックの調整 |
+
+ユーザは段階ごとに観測結果を Claude に伝える．Claude が次のステップ用の改造を準備し，ユーザがビルド済み srec を書込んで再観測する反復ループ．
+
+## 共通: ビルドと書込みコマンド
+
+### ビルド (Claude / ユーザどちらでも可)
+
+```sh
+cd obj/obj_ek_ra6m5
+"C:/Renesas/e2_studio_2025.07/eclipse/plugins/com.renesas.ide.exttools.gnumake.win32.x86_64_4.3.1.v20240909-0854/mk/make.exe" \
+    ATFE_PREFIX="C:/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/toolchains/llvm_arm/ATfE-21.1.1-Windows-x86_64/bin/" \
+    -j4
+```
+
+成功時に `atk2-sc1.srec` (~110 KB) と `atk2-sc1` (ELF) が生成される．
+
+> **Tip**: 上の長い PATH を毎回打つのが面倒なので，msys2 bash 上で
+> ```sh
+> export PATH="/c/Renesas/e2_studio_2025.07/eclipse/plugins/com.renesas.ide.exttools.gnumake.win32.x86_64_4.3.1.v20240909-0854/mk:$PATH"
+> export ATFE_PREFIX="C:/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/toolchains/llvm_arm/ATfE-21.1.1-Windows-x86_64/bin/"
+> ```
+> を `~/.bashrc` 末尾に追記しておくと `make -j4` だけでビルドできる．
+
+### 書込み (J-Link Commander)
+
+EK-RA6M5 の **オンボード J-Link OB** を SWD で使用．ホスト PC が認識
+する USB シリアル番号は J-Link デバイスとして見える．
+
+`obj/obj_ek_ra6m5/Makefile` の `flash` ターゲットが下記コマンドを実行:
+
+```
+echo "connect; R7FA6M5BH; S; 4000; h; loadfile atk2-sc1.srec; r; g; q" |
+    JLinkExe -nogui 1 -if SWD -speed 4000 -autoconnect 1
+```
+
+```sh
+cd obj/obj_ek_ra6m5
+make flash
+```
+
+> **PC に J-Link Software がインストールされていない場合**:
+> Renesas の J-Link バンドル (e² studio v2025-12 同梱) もしくは
+> [SEGGER 公式](https://www.segger.com/downloads/jlink/) から最新を
+> 入手．`JLinkExe.exe` (Windows GUI 版は `JLink.exe`) が PATH に通って
+> いれば `make flash` が動く．
+
+### デバッグ (J-Link GDB Server + arm-none-eabi-gdb)
+
+別端末で:
+```sh
+JLinkGDBServer -device R7FA6M5BH -if SWD -speed 4000 -port 3333
+```
+
+その後:
+```sh
+cd obj/obj_ek_ra6m5
+make debug
+```
+
+### シリアル端末
+
+| 設定項目 | 値 |
+|---|---|
+| ポート | USB-Serial 変換アダプタの COM ポート (≠ J-Link OB VCOM) |
+| ボーレート | 115200 |
+| データビット | 8 |
+| パリティ | None |
+| ストップビット | 1 |
+| フロー制御 | None |
+
+EK-RA6M5 の **Arduino UNO 互換ヘッダ J24** に下記接続:
+
+| アダプタ側 | EK-RA6M5 J24 | ボード側ピン | 用途 |
+|---|---|---|---|
+| TX | Pin 0 (Arduino D0) | P614 (RXD7) | アダプタ TX → MCU RX |
+| RX | Pin 1 (Arduino D1) | P613 (TXD7) | MCU TX → アダプタ RX |
+| GND | GND ピン | — | 共通グラウンド |
+
+> 5V/3.3V のレベル整合に注意．EK-RA6M5 は 3.3V 系．アダプタが 5V 系
+> なら抵抗分圧かレベル変換器を介すこと．
+
+---
 
 ## 実施手順 (段階的ブリングアップ)
 
@@ -17,12 +108,27 @@ Phase 3 で生成された `atk2-sc1.srec` を実機 EK-RA6M5 に書き込み，
 
 **目的**: `start.S → SystemInit → __libc_init_array → main` の経路と BSS 初期化が正しいことを確認．
 
-1. `sample/sample1.c` の `main()` 先頭に LED1 を 1 秒間隔で点滅させる最小コードを暫定追加 (FSP `R_BSP_PinAccessEnable` + IO レジスタ直接書込み)．
+1. **(Claude が準備)** `sample/sample1.c` の `main()` 先頭に下記を仮挿入し，
+   ATK2 カーネル起動より前で LED1 を点滅させる最小ループを置く．
+   ```c
+   /* === Phase 4-1 ブリングアップ用 === BEGIN === */
+   /* P006 (LED1) を出力に設定して busy-wait ブリンク．
+    * SystemInit/IOPORT 初期化後にここに来る前提．R_PORT0 直叩き． */
+   R_PORT0->PDR  |= (1U << 6);     /* PDR.PDR6=1 出力 */
+   while (1) {
+       R_PORT0->PODR ^= (1U << 6); /* PODR.PODR6 反転 */
+       for (volatile uint32_t i = 0; i < 5000000U; i++) { __NOP(); }
+   }
+   /* === Phase 4-1 ブリングアップ用 === END === */
+   StartOS(...);  /* 通常ここから ATK2 起動．4-1 では到達しない */
+   ```
 2. `make -j4 && make flash` で書込み．
-3. リセット後，LED1 が点滅すれば成功．
-4. 失敗時:
+3. リセット後，LED1 (青) が約 1 Hz で点滅すれば成功．
+4. **(ユーザが Claude に報告)** 失敗時の症状:
    - LED が全く動かない → `start.S` の MSP 初期化または BSS clear が失敗．J-Link で halt して PC を確認．
    - リセットループ → `SystemInit()` 内で例外．`__VECTOR_TABLE` 設定または FPU 初期化失敗．
+   - ハードフォルト直行 → vector table が 0x00000000 に正しく置かれていない可能性．`llvm-objdump -h atk2-sc1` で `.vectors @ 0x00000000` 確認．
+5. **(Claude が確認)** 動作後，仮挿入したコードを削除して 4-2 へ進む．
 
 ### 4-2. クロック確認
 
@@ -106,6 +212,72 @@ Phase 3 で生成された `atk2-sc1.srec` を実機 EK-RA6M5 に書き込み，
 | J-Link OB のドライバが古い | EK-RA6M5 同梱は最新版だが PC 側ドライバは要更新 | Renesas 公式から J-Link Software 最新を入手 |
 | デバッグ中にウォッチドッグが発火 | IWDT が有効になっていれば一定時間で resets．OFS0 で無効化されているか確認 | OFS0 のデフォルトは IWDT 停止．問題ないはず |
 | Trustzone Secure mode で起動して NS 領域にアクセス不可 | RA6M5 は M33 + TrustZone．本ポートは NS 単一．OSIS/SCISETP が NS 設定になっているか確認 | デフォルトは NS のはず．異常時は OFS で確認 |
+
+## ユーザがブリングアップ中に Claude に報告するテンプレート
+
+各段階で観察結果が想定と異なる場合，下記情報を Claude に伝えると
+原因調査が効率化する．
+
+### 4-1 (LED 点滅) で動かない
+
+```
+4-1: LED1 が点滅しない．
+- リセット時の挙動: [何も見えない / リセットループ / 1回だけ点いて止まる]
+- J-Link Commander の `connect` で `Found SW-DP with ID 0x6BA02477` 等
+  正常メッセージは出る / 出ない
+- `halt` 後の `regs` 出力 (PC, SP, LR の値) を貼付:
+  PC = 0x________
+  SP = 0x________
+  LR = 0x________
+- 必要なら .map / .syms から Reset_Handler や _kernel_start のアドレス
+  を確認したい
+```
+
+### 4-2 (クロック確認) で周期が想定と違う
+
+```
+4-2: GPIO トグル周期が想定と異なる．
+- オシロ実測: ___ ns/トグル
+- 期待値: 200 MHz なら 5 ns/instr 程度，HOCO 20 MHz だと 50 ns/instr
+- 推測される ICLK: ___ MHz
+- bsp_clock_cfg.h の ICLK 設定: ___
+```
+
+### 4-3 (シリアル送信) で何も出ない / 文字化け
+
+```
+4-3: SCI7 送信．
+- 期待出力: "Hello EK-RA6M5\n"
+- 実出力: [何も出ない / バイナリゴミ / 一部だけ出る]
+- 文字化けの場合は受信した生バイト列を hex で記載
+- アダプタの COM ポート設定: 115200, 8N1, NoFlow
+- ピン抵抗値 (TX/RX) を測ったら ___ kΩ
+```
+
+### 4-4 (シリアル ISR) で `Input Command:` が出るが入力がエコーされない
+
+```
+4-4: SCI7 RX ISR．
+- "Input Command:" は出る / 出ない
+- キー入力したが何も返らない / HardFault
+- J-Link で halt して以下を採取して Claude に貼付したい:
+  R_ICU->IELSR[1] (= SCI7_RXI 想定スロット): 0x________
+  NVIC_ISER[0]: 0x________ (IRQ 1 が enable されているか)
+  PRIMASK / BASEPRI: 0x__
+  except_nest_cnt: __
+```
+
+### 4-5 (HW カウンタ) でアラームが発火しない
+
+```
+4-5: HW カウンタ．
+- `T` コマンド: ___ → ___ (時間差)．想定 1us/tick
+- `b` `B` 表示は正常 / NG
+- アラームを設定して 1 秒待ったが ISR が呼ばれない
+- R_GPT320->GTCNT を J-Link で連続読出: 進む / 進まない
+- R_GPT321->GTCR.b.CST: ___ (1 ならカウント中)
+- R_ICU->IELSR[0] (= GPT321 OVF 想定): 0x________
+```
 
 ## 後続フェーズへの引継
 

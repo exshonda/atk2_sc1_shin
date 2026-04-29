@@ -23,6 +23,19 @@ MEMORY
 {
     FLASH (rx)  : ORIGIN = 0x00000000, LENGTH = 2048K
     SRAM  (xrw) : ORIGIN = 0x20000000, LENGTH = 512K
+
+    /*
+     *  Option Setting Memory (RA6M5 Hardware Manual 6.2)
+     *  CPU リセット後にハードウェアが直接読出す固定アドレス領域．
+     *  bsp_linker.c が `.option_setting_*` セクションへ初期値を配置する．
+     *  アドレスは fsp/memory_regions.lld の生成値と一致させる．
+     */
+    OFS0    (r) : ORIGIN = 0x0100A100, LENGTH = 4
+    DUALSEL (r) : ORIGIN = 0x0100A110, LENGTH = 4
+    OFS1    (r) : ORIGIN = 0x0100A180, LENGTH = 4
+    BANKSEL (r) : ORIGIN = 0x0100A190, LENGTH = 4
+    BPS     (r) : ORIGIN = 0x0100A1C0, LENGTH = 16
+    PBPS    (r) : ORIGIN = 0x0100A1E0, LENGTH = 16
 }
 
 /*
@@ -185,20 +198,23 @@ SECTIONS
     /*
      *  Option Setting Memory (OFS0/OFS1/DUALSEL/BANKSEL/BPS/PBPS)
      *  bsp_linker.c が `.option_setting_*` セクションへ配置する初期値群．
-     *  RA6M5 のデバイス仕様でロード時に CPU が読む固定アドレス領域:
-     *    OFS0      0x0100A100
-     *    OFS1      0x0100A104
-     *    BPS       0x0100A130 ...etc
-     *  本ポートは Flat Non-TrustZone 単一プロジェクトなので Sec 系は不要．
-     *  Phase 2 段階では FLASH へ普通に詰めるだけにし，正規アドレス配置は
-     *  Phase 4 で必要に応じて MEMORY 追加 + AT 配置に変更．
+     *  RA6M5 ハードウェアマニュアル 6.2 の固定アドレス領域に書き込む:
+     *    OFS0    0x0100A100  (HOCO/IWDT/WDT/LVD 等の起動時設定)
+     *    DUALSEL 0x0100A110  (Dual Bank モード選択)
+     *    OFS1    0x0100A180  (HOCO 周波数等)
+     *    BANKSEL 0x0100A190  (Bank 選択)
+     *    BPS     0x0100A1C0  (Block Protect Setting)
+     *    PBPS    0x0100A1E0  (Permanent Block Protect Setting)
+     *  Sec 系 (OFS1_SEC 等) は本ポート (Flat Non-TrustZone) では不要．
+     *  リセット時 CPU が直接これらアドレスから読出すので，必ず該当
+     *  MEMORY 領域 (上で定義) に配置する．
      */
-    .option_setting_ofs0      : { KEEP(*(.option_setting_ofs0))     } > FLASH
-    .option_setting_dualsel   : { KEEP(*(.option_setting_dualsel))  } > FLASH
-    .option_setting_ofs1      : { KEEP(*(.option_setting_ofs1))     } > FLASH
-    .option_setting_banksel   : { KEEP(*(.option_setting_banksel))  } > FLASH
-    .option_setting_bps       : { KEEP(*(.option_setting_bps))      } > FLASH
-    .option_setting_pbps      : { KEEP(*(.option_setting_pbps))     } > FLASH
+    .option_setting_ofs0    : { KEEP(*(.option_setting_ofs0))    } > OFS0
+    .option_setting_dualsel : { KEEP(*(.option_setting_dualsel)) } > DUALSEL
+    .option_setting_ofs1    : { KEEP(*(.option_setting_ofs1))    } > OFS1
+    .option_setting_banksel : { KEEP(*(.option_setting_banksel)) } > BANKSEL
+    .option_setting_bps     : { KEEP(*(.option_setting_bps))     } > BPS
+    .option_setting_pbps    : { KEEP(*(.option_setting_pbps))    } > PBPS
 
     /*
      *  FSP 同梱 startup.c の __VECTOR_TABLE / g_main_stack / g_heap が
