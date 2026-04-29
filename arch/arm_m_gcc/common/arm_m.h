@@ -60,11 +60,26 @@
 
 /*
  *  例外・割込み発生時にLRに設定されるEXC_RETURNの値
- *  ARMv8-M, TrustZone無効, Non-Secure, Thread mode, PSP使用, 標準フレーム
- *  ここでは HW が拡張フレームを積まない (FType=1) 既定値を使用する．
- *  ハンドラから疑似フレーム経由で例外復帰させる場合に bx する値．
+ *
+ *  ARMv8-M Cortex-M33: Thread mode, PSP使用, 標準フレーム (FType=1) を
+ *  既定とする．ハンドラから疑似フレーム経由で例外復帰させる場合に bx する値．
+ *
+ *  bit 0 (ES, Exception Security state):
+ *    - 0 = Non-Secure: STM32H5 等，TrustZone 無効化された Non-Secure
+ *          実行環境．既定値．
+ *    - 1 = Secure:     RA6M5 等の Renesas RA + FSP "Flat Non-TrustZone"
+ *          ビルド．デバイスは Secure state のみで動作するため，例外
+ *          ハンドラから戻る EXC_RETURN も ES=1 でないと CFSR.INVPC で
+ *          HardFault する．
+ *
+ *  ターゲット側 Makefile.chip / Makefile.target で
+ *      -DEXC_RETURN=0xffffffbd
+ *  と override すれば Secure state 用の値になる．override しなければ
+ *  Non-Secure (0xffffffbc) のまま．`#ifndef` ガードでこれを実現．
  */
-#define EXC_RETURN          0xffffffbc
+#ifndef EXC_RETURN
+#define EXC_RETURN          0xffffffbc  /* Default: ARMv8-M Non-Secure thread + PSP + no FP */
+#endif
 #define EXC_RETURN_PREFIX   0xff000000
 #define EXC_RETURN_THREAD   0x8
 #define EXC_RETURN_PSP      0x4

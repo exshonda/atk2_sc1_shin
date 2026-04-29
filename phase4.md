@@ -324,7 +324,38 @@ EK-RA6M5 の **Arduino UNO 互換ヘッダ J24** に下記接続:
    FSP 生成 `vector_data.c` は g_vector_table と同居しビルド除外しているため
    従来 weak 弱定義 (全 0) にフォールバック．これで R_ICU->IELSR が正しく設定．
 
-### 中断時点の課題: alarm 経路 (Phase 4-4/4-5) の HardFault
+### 再開: alarm 経路 HardFault の根本原因と fix (2026-04-30)
+
+**根本原因**: `arch/arm_m_gcc/common/arm_m.h:67` の `EXC_RETURN = 0xFFFFFFBC`
+が **Non-Secure (ES bit=0)** だが，EK-RA6M5 の FSP "Flat Non-TrustZone"
+ビルドはデバイスを **Secure state** で動作させる．Cortex-M33 は EXC_RETURN
+の ES bit が現 security state と一致しないと CFSR.INVPC で HardFault する．
+
+| 項目 | 観測値 / 期待値 | 解釈 |
+|---|---|---|
+| HardFault 時 LR | 0xFFFFFFB9 | thread + MSP + no FP + **Secure** (HW が正しくセット) |
+| ATK2 dispatcher の `exc_return_const` | 0xFFFFFFBC | thread + PSP + no FP + **Non-Secure** ← ES bit 不整合 |
+| 必要な値 (Secure 環境) | 0xFFFFFFBD | thread + PSP + no FP + **Secure** |
+
+H5 (NUCLEO-H563ZI) は STM32H5 が既定で Non-Secure 動作のため 0xFFFFFFBC で
+正常．RA6M5 は Renesas RA の Secure 動作のため 0xFFFFFFBD が必要．
+
+#### Fix (commit 予定)
+
+1. `arch/arm_m_gcc/common/arm_m.h`: `EXC_RETURN` の `#define` を `#ifndef`
+   ガードでラップし，外部から override 可能に．既定値は 0xFFFFFFBC のまま
+   (H5 互換)．コメントに ES bit の意味と Secure/Non-Secure 区分を追記．
+2. `arch/arm_m_llvm/ra_fsp/Makefile.chip`: `CDEFS += -DEXC_RETURN=0xffffffbd`
+   を追加．本層を使う全 RA ターゲット (RA6M5/RA6M4/RA4M2/RA6T2 等) で
+   Secure EXC_RETURN が選択される．
+
+#### H5 副作用
+
+なし．`arch/arm_m_gcc/common/arm_m.h` の変更は `#ifndef` ガード追加
+(純粋に追加的)．override が無ければ既定値 0xFFFFFFBC が使われ，H5
+ビルド (= override しない) は従来通り．
+
+### 旧: alarm 経路 (Phase 4-4/4-5) の HardFault — 中断時点の調査メモ (上記 fix で解消の見込み)
 
 GPT321 OVF 割込みは正しく発火し，
 `kernel_interrupt_entry` → `kernel_inthdr_16` → `kernel_notify_hardware_counter`

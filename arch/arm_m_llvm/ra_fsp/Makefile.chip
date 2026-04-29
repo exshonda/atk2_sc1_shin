@@ -75,6 +75,22 @@ LDFLAGS  := $(LDFLAGS) -mcpu=$(CORE_CPU) -mthumb
 CDEFS    := $(CDEFS) -D_RENESAS_RA_
 
 #
+#  EXC_RETURN を Secure (ES=1) に設定．
+#
+#  Renesas RA + FSP "Flat (Non-TrustZone) Project" は TrustZone 区画
+#  を使わないが，デバイスは **Secure state のみ** で動作する (RA の
+#  デフォルト OFS1.TZEN=0 は「TZ 無効」だが実装上の security state は
+#  Secure)．したがって例外復帰時の EXC_RETURN は bit 0 (ES) = 1 で
+#  ないと CFSR.INVPC で HardFault する．
+#
+#  arch/arm_m_gcc/common/arm_m.h の既定値は 0xffffffbc (Non-Secure)
+#  なので，本層で 0xffffffbd (Secure) に override する．
+#  H5 (NUCLEO-H563ZI) はこの override をしないので 0xffffffbc のまま
+#  Non-Secure 動作 (実機確認済)．
+#
+CDEFS    := $(CDEFS) -DEXC_RETURN=0xffffffbd
+
+#
 #  Cortex-M33/M85 の FPU アーキテクチャ定義 (Makefile.prc が参照)
 #  FPU_ARCH_OPT   : -mfpu に渡す値
 #  FPU_ARCH_MACRO : ソースコード側で参照する判別マクロ名
