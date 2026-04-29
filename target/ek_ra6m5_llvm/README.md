@@ -8,10 +8,12 @@ TOPPERS/ATK2 (SC1) の **Renesas EK-RA6M5 Evaluation Kit** ボード向け
 
 > **ステータス: Phase 2-B 骨格**．Phase 2-A (Smart Configurator による
 > baseline 生成) は **GUI 必須のためユーザ作業** として残しており，
-> `ra_cfg/` `ra_gen/` `configuration.xml` は本層に未配置．Phase 2-A 完了
-> 後に Phase 3 (`obj/obj_ek_ra6m5/Makefile` 作成) と組み合わせてビルド
-> 可能となる．現状ファイル中の `TODO[Phase 2-A]` コメント部は Smart
-> Configurator 出力に依存する暫定値．
+> `fsp/configuration.xml` は本層に未配置．Phase 2-A で
+> `target/ek_ra6m5_llvm/fsp/configuration.xml` をコミットした後，clone
+> 後ユーザが `rascc --generate` を実行して `fsp/ra/` `fsp/ra_cfg/`
+> `fsp/ra_gen/` をローカル生成する．Phase 3 (`obj/obj_ek_ra6m5/Makefile`)
+> と組み合わせてビルド可能になる．現状ファイル中の `TODO[Phase 2-A]`
+> コメント部は Smart Configurator 出力に依存する暫定値．
 
 ## 1. 構成
 
@@ -75,9 +77,9 @@ R7FA6M5BH のメモリマップ:
 
 | 元 | 先 |
 |---|---|
-| `<workspace>/ek_ra6m5_baseline/ra_cfg/` 全体 | `target/ek_ra6m5_llvm/ra_cfg/` |
-| `<workspace>/ek_ra6m5_baseline/ra_gen/` 全体 | `target/ek_ra6m5_llvm/ra_gen/` |
-| `<workspace>/ek_ra6m5_baseline/configuration.xml` | `target/ek_ra6m5_llvm/configuration.xml` |
+| `<workspace>/ek_ra6m5_baseline/ra_cfg/` 全体 | `target/ek_ra6m5_llvm/fsp/ra_cfg/` |
+| `<workspace>/ek_ra6m5_baseline/ra_gen/` 全体 | `target/ek_ra6m5_llvm/fsp/ra_gen/` |
+| `<workspace>/ek_ra6m5_baseline/configuration.xml` | `target/ek_ra6m5_llvm/fsp/configuration.xml` |
 | `<workspace>/ek_ra6m5_baseline/script/fsp.ld` | (参考のみ．`r7fa6m5bh.ld` のベースとして検討) |
 
 ### 3.4 確定すべき値
@@ -231,18 +233,22 @@ target/ek_ra6m5_llvm/
 ├── target.tf                       pass2 ターゲット依存テンプレート
 ├── target_check.tf                 pass3 チェック用テンプレート
 ├── target_offset.tf                offset.h 生成用テンプレート
-├── ra_cfg/                         Smart Configurator 出力 (Phase 2-A 後)
-│   └── README.md                   生成手順・配置仕様
-└── ra_gen/                         Smart Configurator 出力 (Phase 2-A 後)
-    └── README.md                   生成手順・配置仕様
+└── fsp/                            Renesas FSP 関連 (本サブツリーに集約)
+    ├── configuration.xml           Smart Configurator 真値 (Phase 2-A で commit)
+    ├── ra/                         rascc --generate 生成 (gitignored)
+    │   └── fsp/                    FSP 本体 (inc/, src/bsp/, src/r_*/)
+    ├── ra_cfg/                     rascc --generate 生成 (gitignored)
+    │   └── fsp_cfg/                bsp_cfg.h, bsp_clock_cfg.h ほか
+    └── ra_gen/                     rascc --generate 生成 (gitignored)
+        ├── common_data.{c,h}, hal_data.{c,h}, pin_data.c, vector_data.{c,h}
 ```
 
 ## 8. 既知の制限・課題 (Phase 2-B 時点)
 
-- **本層単独ではビルドできない**．`ra_cfg/fsp_cfg/bsp/bsp_cfg.h`
-  `ra_gen/hal_data.c` 等が Smart Configurator 出力前提のため．Phase 2-A
-  完了後に Phase 3 (`obj/obj_ek_ra6m5/Makefile`) と組み合わせてビルド
-  可能になる．
+- **本層単独ではビルドできない**．`fsp/ra_cfg/fsp_cfg/bsp/bsp_cfg.h`
+  `fsp/ra_gen/hal_data.c` 等が Smart Configurator 出力前提のため．
+  Phase 2-A 完了後に Phase 3 (`obj/obj_ek_ra6m5/Makefile`) と組み合わせて
+  ビルド可能になる．
 - **`vector_data.c` の取扱方式**は Phase 2-A 完了後に (a)/(b)/(c) から
   確定．現状 `Makefile.target` の `KERNEL_COBJS` は方式 (a) を仮定．
 - **INTNO 値**は暫定値．`target_serial.{h,arxml}` の `INTNO_SIO`，

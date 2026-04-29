@@ -41,10 +41,17 @@ CHIPDIR = $(SRCDIR)/arch/$(PRC)_$(TOOL)/$(CHIP)
 #
 #  FSP ルートディレクトリ
 #
-#  ターゲット直下の ra/fsp/ を指す．`rascc --generate <TARGETDIR>/configuration.xml`
-#  で生成される．git では gitignore 済 (.gitignore の target/*/ra/ 参照)．
+#  ターゲット直下の fsp/ サブディレクトリを Renesas FSP 関連ファイルの
+#  集約場所として使用する．具体パス:
+#    $(TARGETDIR)/fsp/configuration.xml   ← committed (Smart Configurator 真値)
+#    $(TARGETDIR)/fsp/ra/fsp/             ← rascc --generate で生成 (gitignore)
+#    $(TARGETDIR)/fsp/ra_cfg/             ← 同上 (gitignore)
+#    $(TARGETDIR)/fsp/ra_gen/             ← 同上 (gitignore)
 #
-FSPDIR = $(TARGETDIR)/ra/fsp
+#  `rascc --generate <TARGETDIR>/fsp/configuration.xml` で
+#  `<TARGETDIR>/fsp/` 配下に上記 3 ツリーが新規生成される．
+#
+FSPDIR = $(TARGETDIR)/fsp/ra/fsp
 
 #
 #  必須変数の検査

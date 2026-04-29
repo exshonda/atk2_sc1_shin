@@ -50,10 +50,17 @@ FPU_USAGE = FPU_LAZYSTACKING
 
 #
 #  Smart Configurator 出力ディレクトリ
-#  Phase 2-A で e² studio から生成し，本リポジトリにコミットする．
 #
-RA_CFG_DIR = $(TARGETDIR)/ra_cfg
-RA_GEN_DIR = $(TARGETDIR)/ra_gen
+#  configuration.xml は target/ek_ra6m5_llvm/fsp/ にコミットし，rascc が
+#  その横に ra/, ra_cfg/, ra_gen/ を生成する設計．
+#  - $(TARGETDIR)/fsp/configuration.xml  : committed (真値ソース)
+#  - $(TARGETDIR)/fsp/ra/fsp/             : rascc 生成 (FSP 本体)
+#  - $(TARGETDIR)/fsp/ra_cfg/             : rascc 生成 (BSP/モジュール構成)
+#  - $(TARGETDIR)/fsp/ra_gen/             : rascc 生成 (vector/pin/hal データ)
+#  rascc 生成物は .gitignore で除外．
+#
+RA_CFG_DIR = $(TARGETDIR)/fsp/ra_cfg
+RA_GEN_DIR = $(TARGETDIR)/fsp/ra_gen
 
 #
 #  コンパイルオプション

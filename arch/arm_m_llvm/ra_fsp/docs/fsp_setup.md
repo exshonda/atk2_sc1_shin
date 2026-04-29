@@ -69,7 +69,7 @@ RASCC="C:/Renesas/RA/sc_v2025-12_fsp_v6.4.0/eclipse/rascc.exe"
     --generate \
     --device R7FA6M5BH3CFC \
     --compiler LLVMARM \
-    target/ek_ra6m5_llvm/configuration.xml
+    target/ek_ra6m5_llvm/fsp/configuration.xml
 ```
 
 実行が成功すると下記が `target/ek_ra6m5_llvm/` 配下に **新規作成** される:
@@ -93,11 +93,11 @@ target/ek_ra6m5_llvm/
 
 ### 3.2 他のターゲットを追加した場合
 
-`target/<TARGET>/configuration.xml` がコミットされていれば，同じ手順で生成可能:
+`target/<TARGET>/fsp/configuration.xml` がコミットされていれば，同じ手順で生成可能:
 
 ```sh
 "$RASCC" --generate --device <DEVICE_PARTNUMBER> --compiler LLVMARM \
-    target/<TARGET>/configuration.xml
+    target/<TARGET>/fsp/configuration.xml
 ```
 
 `<DEVICE_PARTNUMBER>` 例:
@@ -110,11 +110,11 @@ target/ek_ra6m5_llvm/
 
 下記が満たされていることを確認:
 
-- [ ] `target/<TARGET>/ra/fsp/inc/fsp_version.h` が存在し，
+- [ ] `target/<TARGET>/fsp/ra/fsp/inc/fsp_version.h` が存在し，
       `FSP_VERSION_MAJOR (6U)` `FSP_VERSION_MINOR (4U)` が定義されている．
-- [ ] `target/<TARGET>/ra_cfg/fsp_cfg/bsp/bsp_cfg.h` が存在し，
+- [ ] `target/<TARGET>/fsp/ra_cfg/fsp_cfg/bsp/bsp_cfg.h` が存在し，
       内部に `BSP_MCU_GROUP_*` および `BSP_MCU_*` の `#define` が含まれる．
-- [ ] `target/<TARGET>/ra_gen/vector_data.c` が存在し，
+- [ ] `target/<TARGET>/fsp/ra_gen/vector_data.c` が存在し，
       `g_interrupt_event_link_select[]` 配列が定義されている．
 - [ ] `git status` で生成物が untracked にも staged にも現れない (gitignore 効果)．
 
@@ -137,8 +137,8 @@ target/ek_ra6m5_llvm/
   実行する step を入れる．
 - `configuration.xml` と生成物の整合チェックは:
   ```sh
-  rascc --generate ... target/<TARGET>/configuration.xml
-  git diff --exit-code target/<TARGET>/ra_cfg/ target/<TARGET>/ra_gen/
+  rascc --generate ... target/<TARGET>/fsp/configuration.xml
+  git diff --exit-code target/<TARGET>/fsp/ra_cfg/ target/<TARGET>/fsp/ra_gen/
   ```
   生成物は untracked なので git diff には出ない．代わりに
   `git status target/<TARGET>/` で `untracked but expected` なファイルを
@@ -150,8 +150,8 @@ target/ek_ra6m5_llvm/
 |---|---|
 | `Cannot invoke "org.eclipse.core.runtime.IPath.append(String)" because the return value of "...getVersionedCMSISZoneResourceLocation(...)" is null` | `configuration.xml` のメタデータ不足．Smart Configurator GUI で 1 回開いて再保存し，再 `--generate` |
 | `rascc.exe: command not found` | Renesas FSP がインストールされていない or パスが違う．§2.1 参照 |
-| `--device R7FA6M5BH3CFC` の値が違う | `target/<TARGET>/configuration.xml` の `<device>` タグの値と一致させる．grep で確認可能 |
-| 生成後にビルド時 `bsp_cfg.h: No such file or directory` | 生成物の場所が違う．`target/<TARGET>/ra_cfg/fsp_cfg/bsp/bsp_cfg.h` の存在を確認 |
+| `--device R7FA6M5BH3CFC` の値が違う | `target/<TARGET>/fsp/configuration.xml` の `<device>` タグの値と一致させる．grep で確認可能 |
+| 生成後にビルド時 `bsp_cfg.h: No such file or directory` | 生成物の場所が違う．`target/<TARGET>/fsp/ra_cfg/fsp_cfg/bsp/bsp_cfg.h` の存在を確認 |
 | GitHub Actions / Linux 環境で実行したい | Renesas FSP は Windows 専用ではないが，`rascc.exe` は Windows 版のみ公式提供．Linux で動かす場合は Wine か e² studio Linux 版同梱の rascc を使う．具体的なサポートは Renesas 側の判断 |
 | FSP 6.4.0 でなく 6.1.0 を使いたい | 任意の FSP 6.x で動作する想定．`configuration.xml` の `<raConfiguration version="...">` の値が一致するインストール版を使う．chip 層 Makefile.chip は FSP 6.x 共通 |
 

@@ -39,13 +39,13 @@ main からの差分 commit (新しい順):
 
 | ID | 判断 | 根拠 |
 |---|---|---|
-| (A) | **FSP ソースはリポジトリに同梱しない**．`configuration.xml` のみコミットし，clone 後にユーザが `rascc.exe --generate` で `target/<TARGET>/ra/` `ra_cfg/` `ra_gen/` を生成．生成物は `.gitignore` で除外． | ユーザ確認済 (新方針) |
+| (A) | **FSP ソースはリポジトリに同梱しない**．`configuration.xml` のみコミットし，clone 後にユーザが `rascc.exe --generate` で `target/<TARGET>/fsp/ra/` `ra_cfg/` `ra_gen/` を生成．生成物は `.gitignore` で除外． | ユーザ確認済 (新方針) |
 | (B) | ベクタテーブルは ATK2 cfg pass2 生成 (`Os_Lcfg.c`) を使う．FSP 生成 `g_vector_table[]` は除外 | ユーザ確認済 |
 | (C) | `arch/arm_m_gcc/common/` は変更しない (LLVM ビルドでも同ディレクトリのソースを vpath 経由で再利用) | CLAUDE.md 開発項目 |
 | (D) | **コンパイラは ARM LLVM (Arm Toolchain for Embedded; ATfE) 21.1.1** (`C:/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/toolchains/llvm_arm/ATfE-21.1.1-Windows-x86_64/bin/clang.exe`)．`--target=arm-none-eabi` でビルド | ユーザ指定 |
 | (E) | RA ファミリ汎用 chip 層 (`arch/arm_m_llvm/ra_fsp/`)．`MCU_GROUP` (`ra6m5` 等) と `CORE_CPU` (`cortex-m33`/`cortex-m85`) を `Makefile.target` で指定．EK-RA6M5 以外のボードを将来追加する場合，target 層を新設するだけで chip 層は再利用可 | ユーザ指定 |
 | (F) | **シリアル (ログ出力) は SCI3 (Arduino D0/D1)**．EK-RA6M5 J24 ヘッダ Pin 0 = RX = P303，Pin 1 = TX = P302．115200bps．外付け USB-Serial 変換アダプタを使う想定．J-Link OB VCOM (SCI9) は使わない | ユーザ指定 |
-| (G) | FSP は `target/<TARGET>/ra/fsp/` (rascc 生成; gitignore)．Smart Configurator 生成 (`ra_cfg/` / `ra_gen/`) も target 層配下 (gitignore) | (A) の帰結 |
+| (G) | FSP は `target/<TARGET>/fsp/ra/fsp/` (rascc 生成; gitignore)．Smart Configurator 生成 (`ra_cfg/` / `ra_gen/`) も target 層配下 (gitignore) | (A) の帰結 |
 
 ### 0-4. Phase 2 で **確定すべき** 未決事項 (本ファイル§設計判断 を参照)
 
@@ -64,9 +64,9 @@ main からの差分 commit (新しい順):
 
 ### 0-6. Phase 2 の最初に取るアクション
 
-1. **`configuration.xml` を target/ek_ra6m5_llvm/ にコミット**．`configuration.xml` は Smart Configurator のソース．**初回はユーザが GUI で生成して取得する必要がある**． 取得方法は本ファイル §A (Phase 2-A) 参照．
-2. ユーザから `configuration.xml` を受領 → `target/ek_ra6m5_llvm/configuration.xml` に commit．
-3. `arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md` の手順に従い `rascc.exe --generate` を実行．これにより `ra/` `ra_cfg/` `ra_gen/` がローカル生成される (gitignore 済)．
+1. **`configuration.xml` を target/ek_ra6m5_llvm/fsp/ にコミット**．`configuration.xml` は Smart Configurator のソース．**初回はユーザが GUI で生成して取得する必要がある**． 取得方法は本ファイル §A (Phase 2-A) 参照．
+2. ユーザから `configuration.xml` を受領 → `target/ek_ra6m5_llvm/fsp/configuration.xml` に commit．
+3. `arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md` の手順に従い `rascc.exe --generate` を実行．これにより `fsp/ra/` `fsp/ra_cfg/` `fsp/ra_gen/` がローカル生成される (gitignore 済)．
 4. Phase 2-B (target 依存部一式) は commit `9c7561e` で骨格完了．INTNO 確定や `vector_data.c` 取扱方式の決定に進む．
 
 ### 0-7. 制約・運用ルール
@@ -86,12 +86,12 @@ main からの差分 commit (新しい順):
 > **本節はユーザーが手作業で実施する必須タスク**．新方針では下記 2 段階:
 >
 > 1. **初回のみ**: Smart Configurator GUI で `configuration.xml` を 1 回作成し，
->    `target/ek_ra6m5_llvm/configuration.xml` にコミットする．
+>    `target/ek_ra6m5_llvm/fsp/configuration.xml` にコミットする．
 > 2. **以後**: clone 後ユーザは `rascc.exe --generate` を実行するだけで
->    `ra/` `ra_cfg/` `ra_gen/` がローカル生成される (gitignore 済)．
+>    `fsp/ra/` `fsp/ra_cfg/` `fsp/ra_gen/` がローカル生成される (gitignore 済)．
 >    手順は [`arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md`](arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md) を参照．
 >
-> 現状 `target/ek_ra6m5_llvm/configuration.xml` は **未コミット**．Phase 2-A
+> 現状 `target/ek_ra6m5_llvm/fsp/configuration.xml` は **未コミット**．Phase 2-A
 > の最初の作業はこれを生成・取得すること．
 
 ### A. 前提状態の確認
@@ -134,9 +134,9 @@ GUI を **どちらか好きな方** で起動する:
    - **Pins**: P303 = RXD3 (Arduino D0 / Pin 0), P302 = TXD3 (Arduino D1 / Pin 1) を AF (SCI3) に設定
 3. **Generate Project Content** をクリック．
 4. 生成プロジェクト直下の **`configuration.xml` のみを** 本リポジトリにコピー:
-   - `<ws>/ek_ra6m5_baseline/configuration.xml` → `target/ek_ra6m5_llvm/configuration.xml`
+   - `<ws>/ek_ra6m5_baseline/configuration.xml` → `target/ek_ra6m5_llvm/fsp/configuration.xml`
    - **`ra/` `ra_cfg/` `ra_gen/` はコピーしない** (gitignore 対象)．
-5. `git add target/ek_ra6m5_llvm/configuration.xml` してコミット．推奨メッセージ:
+5. `git add target/ek_ra6m5_llvm/fsp/configuration.xml` してコミット．推奨メッセージ:
    ```
    target/ek_ra6m5_llvm: configuration.xml 追加 (Smart Configurator baseline)
 
@@ -153,10 +153,10 @@ GUI を **どちらか好きな方** で起動する:
     --generate \
     --device R7FA6M5BH3CFC \
     --compiler LLVMARM \
-    target/ek_ra6m5_llvm/configuration.xml
+    target/ek_ra6m5_llvm/fsp/configuration.xml
 ```
 
-実行後 `target/ek_ra6m5_llvm/` 配下に `ra/` `ra_cfg/` `ra_gen/` が新規作成．
+実行後 `target/ek_ra6m5_llvm/fsp/` 配下に `ra/` `ra_cfg/` `ra_gen/` が新規作成．
 これらは `.gitignore` で除外されているため commit されない．
 
 詳細は [`arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md`](arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md) を参照．
@@ -165,15 +165,15 @@ GUI を **どちらか好きな方** で起動する:
 
 下記が満たされていることを確認:
 
-- [ ] `target/ek_ra6m5_llvm/configuration.xml` が commit されている
-- [ ] `target/ek_ra6m5_llvm/ra_cfg/fsp_cfg/bsp/bsp_cfg.h` が存在．内部に `BSP_MCU_GROUP_RA6M5` `BSP_MCU_R7FA6M5BH` の `#define`
-- [ ] `target/ek_ra6m5_llvm/ra_gen/vector_data.c` が存在．`g_interrupt_event_link_select[]` あり
-- [ ] `target/ek_ra6m5_llvm/ra/fsp/inc/fsp_version.h` が `FSP_VERSION_MAJOR (6U)` `FSP_VERSION_MINOR (4U)` を定義
-- [ ] `git status target/ek_ra6m5_llvm/` で `ra/` `ra_cfg/` `ra_gen/` が **untracked にもならない** (gitignore 効果)
+- [ ] `target/ek_ra6m5_llvm/fsp/configuration.xml` が commit されている
+- [ ] `target/ek_ra6m5_llvm/fsp/ra_cfg/fsp_cfg/bsp/bsp_cfg.h` が存在．内部に `BSP_MCU_GROUP_RA6M5` `BSP_MCU_R7FA6M5BH` の `#define`
+- [ ] `target/ek_ra6m5_llvm/fsp/ra_gen/vector_data.c` が存在．`g_interrupt_event_link_select[]` あり
+- [ ] `target/ek_ra6m5_llvm/fsp/ra/fsp/inc/fsp_version.h` が `FSP_VERSION_MAJOR (6U)` `FSP_VERSION_MINOR (4U)` を定義
+- [ ] `git status target/ek_ra6m5_llvm/fsp/` で `ra/` `ra_cfg/` `ra_gen/` が **untracked にもならない** (gitignore 効果)
 
 ### E. INTNO スロット番号の読取り (Claude が引継)
 
-`target/ek_ra6m5_llvm/ra_gen/vector_data.c` を開き，
+`target/ek_ra6m5_llvm/fsp/ra_gen/vector_data.c` を開き，
 `g_interrupt_event_link_select[]` 配列のインデックスから INTNO を導出:
 
 | FSP イベント名 | 配列インデックス N | 対応 INTNO (= N + 16) |
@@ -206,8 +206,8 @@ Claude が下記を反映:
 
 ```
 Phase 2-A 完了．configuration.xml は commit ___ で追加済み．
-ローカルで `rascc --generate target/ek_ra6m5_llvm/configuration.xml` 実行済み．
-target/ek_ra6m5_llvm/ra_gen/vector_data.c から読取った INTNO:
+ローカルで `rascc --generate target/ek_ra6m5_llvm/fsp/configuration.xml` 実行済み．
+target/ek_ra6m5_llvm/fsp/ra_gen/vector_data.c から読取った INTNO:
 - SCI3_RXI       : N=___ → INTNO=___
 - GPT321_OVF 相当: N=___ → INTNO=___
 これで Phase 2-B 残作業 (INTNO 反映 + vector_data.c 取扱確定) と Phase 3 を進めてほしい．
@@ -266,16 +266,18 @@ target/ek_ra6m5_llvm/
 ├── target.tf                  pass2 ターゲット依存テンプレート
 ├── target_check.tf            pass3 チェック用テンプレート
 ├── target_offset.tf           offset.h 生成用テンプレート
-├── ra_cfg/                    Smart Configurator 出力
-│   └── fsp_cfg/               bsp_cfg.h, bsp_clock_cfg.h, bsp_module_irq_cfg.h ほか
-└── ra_gen/                    Smart Configurator 出力
-    ├── common_data.{c,h}      hal モジュール初期化テーブル
-    ├── hal_data.{c,h}         FSP モジュールインスタンス定義
-    ├── pin_data.c             ピン構成 (R_IOPORT_Open に渡される)
-    ├── vector_data.{c,h}      ベクタテーブル + IELSR マッピング (※ vector_data.c は
-    │                          ビルド対象外．IELSR テーブルだけ参照する)
-    └── (configuration.xml は target/ek_ra6m5_llvm/ 直下に配置 - Smart Configurator
-         のソース)
+└── fsp/                       Renesas FSP 関連 (本サブツリーに集約)
+    ├── configuration.xml      Smart Configurator のソース (committed; 真値)
+    ├── ra/                    rascc --generate 生成 (gitignored)
+    │   └── fsp/               FSP 本体 (inc/, src/bsp/, src/r_*/)
+    ├── ra_cfg/                rascc --generate 生成 (gitignored)
+    │   └── fsp_cfg/           bsp_cfg.h, bsp_clock_cfg.h, bsp_module_irq_cfg.h
+    └── ra_gen/                rascc --generate 生成 (gitignored)
+        ├── common_data.{c,h}  hal モジュール初期化テーブル
+        ├── hal_data.{c,h}     FSP モジュールインスタンス定義
+        ├── pin_data.c         ピン構成 (R_IOPORT_Open に渡される)
+        └── vector_data.{c,h}  ベクタテーブル + IELSR マッピング (※ vector_data.c は
+                               ビルド対象外．IELSR テーブルだけ参照する)
 ```
 
 ## 実施手順
@@ -286,11 +288,11 @@ target/ek_ra6m5_llvm/
 
 1. ユーザが GUI (rasc.exe または e² studio) で `configuration.xml` を作成．
    Board=EK-RA6M5, **SCI3** (Arduino D0/D1) + GPT320 + GPT321 + IOPORT．
-2. `target/ek_ra6m5_llvm/configuration.xml` のみコミット．`ra/` `ra_cfg/`
+2. `target/ek_ra6m5_llvm/fsp/configuration.xml` のみコミット．`ra/` `ra_cfg/`
    `ra_gen/` は gitignore．
-3. `rascc.exe --generate target/ek_ra6m5_llvm/configuration.xml --compiler LLVMARM
+3. `rascc.exe --generate target/ek_ra6m5_llvm/fsp/configuration.xml --compiler LLVMARM
    --device R7FA6M5BH3CFC` でローカル生成．
-4. `target/ek_ra6m5_llvm/ra_gen/vector_data.c` から SCI3_RXI / GPT321_OVF の
+4. `target/ek_ra6m5_llvm/fsp/ra_gen/vector_data.c` から SCI3_RXI / GPT321_OVF の
    NVIC スロット番号を読取．
 
 ### Phase 2-B: ターゲット依存部一式の作成
@@ -309,8 +311,8 @@ target/ek_ra6m5_llvm/
    - `FPU_USAGE = FPU_LAZYSTACKING`
    - `INIT_MSP` 定義
    - `LDSCRIPT = $(TARGETDIR)/r7fa6m5bh.ld`
-   - `INCLUDES += -I$(TARGETDIR)/ra_cfg/fsp_cfg -I$(TARGETDIR)/ra_cfg/fsp_cfg/bsp -I$(TARGETDIR)/ra_gen`
-   - `KERNEL_DIR += $(TARGETDIR)/ra_gen`
+   - `INCLUDES += -I$(TARGETDIR)/fsp/ra_cfg/fsp_cfg -I$(TARGETDIR)/fsp/ra_cfg/fsp_cfg/bsp -I$(TARGETDIR)/fsp/ra_gen`
+   - `KERNEL_DIR += $(TARGETDIR)/fsp/ra_gen`
    - `KERNEL_COBJS += target_config.o target_hw_counter.o common_data.o hal_data.o pin_data.o`
    - **`vector_data.o` は意図的に除外** (cfg 生成のベクタテーブルと衝突するため)
    - 必要に応じて `r_ioport.o`, `r_sci_uart.o`, `r_gpt.o` を追加 (FSP ドライバを使う場合)

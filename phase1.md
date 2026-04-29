@@ -12,7 +12,7 @@ Renesas RA ファミリ (Cortex-M33) 向けチップ依存部 `arch/arm_m_llvm/r
 
 ## 設計判断
 
-- **(A) FSP の取り込み方**: **オンデマンド生成方式**．`configuration.xml` のみコミットし，clone 後にユーザが `rascc --generate` で `target/<TARGET>/ra/` `ra_cfg/` `ra_gen/` を生成．これらは `.gitignore` で除外．**chip 層 (`arch/arm_m_llvm/ra_fsp/`) には FSP ソースを置かない**．
+- **(A) FSP の取り込み方**: **オンデマンド生成方式**．`configuration.xml` のみコミットし，clone 後にユーザが `rascc --generate` で `target/<TARGET>/fsp/ra/` `ra_cfg/` `ra_gen/` を生成．これらは `.gitignore` で除外．**chip 層 (`arch/arm_m_llvm/ra_fsp/`) には FSP ソースを置かない**．
   - 旧方針 (FSP 6.4.0 を chip 層に同梱) は撤回．配布サイズと FSP バージョンアップ容易性のため．
 - **(B) ベクタテーブル戦略**: ATK2 cfg pass2 が生成する `Os_Lcfg.c` 内のテーブルに統一．FSP 生成の `vector_data.c` の `g_vector_table[]` は Phase 2 でビルド対象外にする．`ICU.IELSR` (NVIC スロット ↔ ペリフェラル割込みのマップ) は FSP 生成の `g_interrupt_event_link_select` テーブルを参照する．
 - **(C) RA ファミリ汎用化**: chip 層は `MCU_GROUP` (例: `ra6m5`/`ra6m4`/`ra4m2`/`ra6t2`) と `CORE_CPU` (例: `cortex-m33`/`cortex-m85`) を `Makefile.target` から受け取って組み立てる．EK-RA6M5 以外のボードを将来追加する際は，target 層を新設するだけで chip 層は変更不要．
@@ -37,7 +37,7 @@ arch/arm_m_llvm/ra_fsp/
 2. `chip_config.h` を H5 版に倣って作成．`#include "bsp_api.h"` のみ．
 3. `Makefile.chip` に下記を定義:
    - `CHIPDIR = $(SRCDIR)/arch/$(PRC)_$(TOOL)/$(CHIP)`
-   - `FSPDIR = $(TARGETDIR)/ra/fsp` (ターゲット直下を参照．rascc 生成)
+   - `FSPDIR = $(TARGETDIR)/fsp/ra/fsp` (ターゲット直下を参照．rascc 生成)
    - `MCU_GROUP` 必須化 (Makefile.target が指定．未指定時 `$(error)`)
    - `CORE_CPU ?= cortex-m33` (上書き可．M85 系 RA8 で使用)
    - `COPTS += -mcpu=$(CORE_CPU) -mthumb -mlittle-endian`
@@ -49,14 +49,14 @@ arch/arm_m_llvm/ra_fsp/
    - `include $(SRCDIR)/arch/$(PRC)_$(TOOL)/common/Makefile.prc`
 4. `README.md` に責務分担表 (§6) と FSP 取込が必要な点 (§7 既知制限) を記述．
 5. `docs/fsp_setup.md` でユーザ向け手順 (rascc インストール → `--generate` 実行 → 検証) を整備．
-6. `.gitignore` に `target/*/ra/` `target/*/ra_cfg/` `target/*/ra_gen/` を追加．
+6. `.gitignore` に `target/*/fsp/ra/` `target/*/fsp/ra_cfg/` `target/*/fsp/ra_gen/` を追加．
 7. コミット．
 
 ## 検証 / 終了条件
 
 - [ ] 上記成果物が `feat/ek_ra6m5_phase1` ブランチにコミット済み．
 - [ ] `arch/arm_m_llvm/ra_fsp/fsp/` サブディレクトリが**存在しない** (FSP 同梱しない方針の遵守)．
-- [ ] `target/<T>/ra/` 等が `.gitignore` で除外されている．
+- [ ] `target/<T>/fsp/ra/` 等が `.gitignore` で除外されている．
 - [ ] `arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md` を読んだだけで，新規開発者が rascc を導入し `--generate` を実行できる．
 - [ ] **本フェーズではコンパイルは行わない**．コンパイル検証は Phase 3 (Phase 2-A の rascc --generate 完了後) で実施．
 
@@ -73,5 +73,5 @@ arch/arm_m_llvm/ra_fsp/
 
 ## 後続フェーズへの引継
 
-- Phase 2 が `target/ek_ra6m5_llvm/configuration.xml` を整備し，ユーザが `rascc --generate` を実行することで，本層と組み合わせて全体ビルドが成立するようになる．
+- Phase 2 が `target/ek_ra6m5_llvm/fsp/configuration.xml` を整備し，ユーザが `rascc --generate` を実行することで，本層と組み合わせて全体ビルドが成立するようになる．
 - 他の Cortex-M33 RA チップ向けターゲットを追加する場合は，`target/<board>_gcc/Makefile.target` で `MCU_GROUP` `CORE_CPU` を変更するだけで chip 層は再利用可．

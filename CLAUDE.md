@@ -99,7 +99,7 @@ The application's static OS configuration (tasks, alarms, counters, ISRs, resour
 - EK-RA6M5 向けの依存部を開発する
   - コア依存部（./arch/arm_m_gcc/common）は変更せずにそのまま使用する
   - RenesasのFSPドライバを使ってよい
-    - **FSP ソースはリポジトリに同梱しない**．`configuration.xml` のみコミットし，clone 後にユーザが `rascc.exe --generate` で `target/<TARGET>/ra/` `ra_cfg/` `ra_gen/` を生成する．手順は [`arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md`](arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md) 参照．
+    - **FSP ソースはリポジトリに同梱しない**．`configuration.xml` のみコミットし，clone 後にユーザが `rascc.exe --generate` で `target/<TARGET>/fsp/ra/` `target/<TARGET>/fsp/ra_cfg/` `target/<TARGET>/fsp/ra_gen/` を生成する．手順は [`arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md`](arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md) 参照．
   - 将来的に同じ Cortex-M33 を搭載した他の RA シリーズ (RA4M2/M3, RA6M4, RA6T2, RA8M1 等) に展開可能な構成とする．chip 層 `arch/arm_m_llvm/ra_fsp/` は RA ファミリ汎用．`MCU_GROUP` (`ra6m5`/`ra6m4`/`ra4m2` 等) と `CORE_CPU` (`cortex-m33`/`cortex-m85`) を `Makefile.target` で指定する設計．
 
 ### EK-RA6M5 ポート: 重要な構成情報
@@ -111,5 +111,5 @@ The application's static OS configuration (tasks, alarms, counters, ISRs, resour
 - **ビルドディレクトリ**: `obj/obj_ek_ra6m5/` (Phase 3 で作成予定)
 - **FSP**: バージョン 6.4.0 (Renesas Smart Configurator sc_v2025-12)．`C:/Renesas/RA/sc_v2025-12_fsp_v6.4.0/eclipse/rascc.exe`．
 - **シリアル (ログ出力)**: **SCI3 経由 Arduino D0/D1**．EK-RA6M5 の J24 ヘッダ Pin 0 (RX = P303 = RXD3) / Pin 1 (TX = P302 = TXD3)．115200 bps, 8N1．外付け USB-Serial 変換アダプタを J24 に接続して使う想定．J-Link OB VCOM (SCI9) は使用しない．
-- **clone 後の必須作業**: `rascc --generate target/ek_ra6m5_llvm/configuration.xml` を実行すること．生成物 `ra/` `ra_cfg/` `ra_gen/` は `.gitignore` で除外．手順詳細は [`arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md`](arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md)．
+- **clone 後の必須作業**: `rascc --generate target/ek_ra6m5_llvm/fsp/configuration.xml` を実行すること．生成物 `ra/` `ra_cfg/` `ra_gen/` は `.gitignore` で除外．手順詳細は [`arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md`](arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md)．
 - **段階的実装計画**: `phase1.md`〜`phase6.md` 参照．現状は Phase 2-A (Smart Configurator baseline 取込) 待ち．
