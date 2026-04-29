@@ -106,6 +106,10 @@ offset.timestamp
 kernel.res
 check.timestamp
 
+#  cfg_py の回帰テスト用フィクスチャは上記パターンに該当する名前を持つが
+#  リポジトリに固定する必要があるので除外する．
+!cfg/cfg_py/tests/fixtures/**
+
 # ロードモジュール (アプリ名)
 atk2-sc1
 atk2-sc1.*
