@@ -539,10 +539,18 @@ $(OBJDIR)/%.o: %.S
 #  J-Link Commander スクリプトをパイプ経由で渡す．
 #  EK-RA6M5 のオンボード J-Link OB を SWD で使用 (4 MHz)．
 #
+#  -device / -if / -speed をコマンドライン引数で指定することで，J-Link
+#  起動時のデバイス選択 GUI / プロンプトを抑止する．script 側からは
+#  既に connect 済の状態に対して halt / loadfile / reset / go を順に
+#  発行するだけで良い．
+#
+JLINK_DEVICE = R7FA6M5BH
+
 .PHONY: flash
 flash: $(OBJNAME).srec
-	@printf 'connect\nR7FA6M5BH\nS\n4000\nh\nloadfile $(OBJNAME).srec\nr\ng\nq\n' | \
-	    JLink -nogui 1 -if SWD -speed 4000 -autoconnect 1
+	@printf 'h\nloadfile $(OBJNAME).srec\nr\ng\nq\n' | \
+	    JLink -device $(JLINK_DEVICE) -if SWD -speed 4000 \
+	          -autoconnect 1 -nogui 1
 
 #
 #  デバッグ起動 (J-Link GDB Server + LLVM lldb / arm-none-eabi-gdb)
