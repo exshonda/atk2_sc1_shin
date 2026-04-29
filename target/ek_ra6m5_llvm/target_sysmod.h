@@ -16,7 +16,7 @@
  */
 
 /*
- *  システムモジュールのターゲット依存部（EK_RA6M5_GCC用）
+ *  システムモジュールのターゲット依存部（EK_RA6M5_LLVM用）
  */
 
 #ifndef TOPPERS_TARGET_SYSMOD_H

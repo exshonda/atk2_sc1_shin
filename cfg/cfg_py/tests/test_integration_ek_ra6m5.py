@@ -146,12 +146,17 @@ def _diff_against_expected(workspace, name, actual_name=None):
         actual = f.read().replace("\r\n", "\n")
     with open(expected_path, "r", encoding="utf-8") as f:
         expected = f.read().replace("\r\n", "\n")
+    #  Update hint: for Os_Cfg.h, cfg_py emits Os_Cfg_tmp.h (Makefile renames).
+    #  The build's obj/ holds the post-rename Os_Cfg.h which is byte-equal to
+    #  the cmp_tmp.h emitted just before, so we can still source from
+    #  obj/obj_ek_ra6m5/Os_Cfg.h to refresh the fixture.
     assert actual == expected, (
         f"{name} mismatch (cfg_py output vs fixture).\n"
         f"  expected: {expected_path}\n"
         f"  actual:   {actual_path}\n"
-        f"  hint: if this change is intentional, copy "
-        f"obj/obj_ek_ra6m5/{name} into the fixture."
+        f"  hint: if this change is intentional, run a full "
+        f"`make -C obj/obj_ek_ra6m5` and copy obj/obj_ek_ra6m5/{name} "
+        f"into expected/{name}."
     )
 
 

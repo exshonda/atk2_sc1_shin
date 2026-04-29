@@ -44,10 +44,12 @@
  */
 
 /*
- *  チップ依存モジュール (RA + Renesas FSP 共通; Cortex-M33 系)
+ *  チップ依存モジュール (RA + Renesas FSP; Cortex-M33 + 96-slot ICU)
  *
- *  対応 RA ファミリ: RA4M2/M3, RA4E1/E2, RA6M4/M5, RA6T2 等．
- *  個別チップは Makefile.target 側の MCU_GROUP / CORE_CPU 変数で選択する．
+ *  動作確認済: RA6M5．同形ハードの RA6M4/RA4M2/M3/RA4E1/E2/RA6T2 への
+ *  流用は配線変更のみで可と推定 (未確認)．
+ *  RA8 系 (Cortex-M85 / 128-slot ICU) は本層では未サポート (TMAX_INTNO/
+ *  TNUM_INT が合わないため．Makefile.chip の冒頭コメント参照)．
  *
  *  このインクルードファイルは target_config.h からインクルードされる
  */
@@ -56,16 +58,11 @@
 #define TOPPERS_CHIP_CONFIG_H
 
 /*
- *  割込み番号に関する定義
+ *  割込み番号に関する定義 (96-slot ICU 前提; 上記参照)
  *  RA6M5 (R7FA6M5BH): IRQ0〜IRQ95 (例外番号16〜111)
- *  ICU.IELSR で 96 個のイベントリンクスロットを持つ (BSP_ICU_VECTOR_NUM_ENTRIES)．
- *  Cortex-M33 NVIC IRQ0..IRQ95 は ICU が任意の RA イベントへ動的に割付ける．
- *
- *  注意: RA ファミリの他チップ (RA6M4=96, RA4M2/M3=96, RA6T2=96, RA8M1=128 等)
- *        ではスロット数が異なる．本チップ層は RA ファミリ汎用だが，現状
- *        TMAX_INTNO/TNUM_INT は RA6M5/RA6M4/RA4M2/RA6T2 共通の 96 スロット
- *        前提でハードコードしている．RA8M1 等で広げる必要が出たら
- *        MCU_GROUP に応じて分岐する．
+ *  ICU.IELSR で 96 個のイベントリンクスロット (BSP_ICU_VECTOR_NUM_ENTRIES)．
+ *  Cortex-M33 NVIC IRQ0..IRQ95 を ICU が任意の RA イベントへ動的に割付ける．
+ *  本層が想定する全ての MCU_GROUP (ra6m5/ra6m4/ra4m2/ra6t2 等) で共通．
  */
 #define TMIN_INTNO  UINT_C(16)   /* 最小割込み番号（IRQ0 = 例外番号16） */
 #define TMAX_INTNO  UINT_C(111)  /* 最大割込み番号（IRQ95 = 例外番号111） */

@@ -16,10 +16,18 @@
 #
 
 #
-#  Makefile のチップ依存部 (RA + Renesas FSP 共通; Cortex-M33 系)
+#  Makefile のチップ依存部 (RA + Renesas FSP; Cortex-M33 + 96-slot ICU)
 #
-#  対応 RA ファミリ: RA4M2/M3, RA4E1/E2, RA6M4/M5, RA6T2 など
-#  Cortex-M33 + FPU 構成．Cortex-M85 系 (RA8) は CORE_CPU 上書きで対応可．
+#  動作確認済: RA6M5 (R7FA6M5BH)．
+#  同形ハードウェア (Cortex-M33 + ICU 96 スロット + 4-bit NVIPRI) を持つ
+#  RA4M2/M3, RA4E1/E2, RA6M4, RA6T2 系での流用は配線変更のみで可と
+#  推定 (未確認)．
+#
+#  **対応外**:
+#    - RA8 系 (Cortex-M85 / 128-slot ICU): chip_config.h と chip.tf の
+#      INTNO 範囲が合わない．chip 層のフォークまたは MCU_GROUP 分岐の
+#      導入が必要．
+#    - RA2 系 (Cortex-M23): BASEPRI 非搭載のため OS 割込み禁止が動かない．
 #
 #  本層は **FSP ソースを同梱しない**．
 #  各ターゲットが `rascc.exe --generate <configuration.xml>` で
@@ -27,9 +35,12 @@
 #  詳細は `docs/fsp_setup.md` 参照．
 #
 #  ターゲット依存部 (`Makefile.target`) で必須:
-#    CHIP        = ra_fsp                                 (本ディレクトリ名)
-#    MCU_GROUP   = ra6m5 / ra6m4 / ra4m2 / ra6t2 ...      (FSP の bsp/mcu/<group>/)
-#    CORE_CPU    = (省略可) cortex-m33 / cortex-m85
+#    CHIP        = ra_fsp                            (本ディレクトリ名)
+#    MCU_GROUP   = ra6m5 / ra6m4 / ra4m2 / ra6t2     (FSP の bsp/mcu/<group>/)
+#    CORE_CPU    = (省略可) cortex-m33 のみ          (ra8 用に上書きする
+#                                                     場合は chip_config.h
+#                                                     /chip.tf の INTNO 値も
+#                                                     再評価が必要)
 #    FPU_ARCH_OPT/MACRO は本ファイルが既定値 (Cortex-M33+FPU) を設定．
 #
 

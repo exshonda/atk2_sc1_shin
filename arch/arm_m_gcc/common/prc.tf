@@ -130,7 +130,9 @@ $NL$
 $
 $  ARMベクタテーブル
 $  .vectors セクションに配置し, VTOR で参照される
-$  スロット0=初期MSP, 1=Reset, 2〜15=ARM例外, 16〜147=IRQ0〜IRQ131
+$  スロット0=初期MSP, 1=Reset, 2〜15=ARM例外, 16〜(15 + |INTNO_VALID|)
+$  =IRQ0〜IRQ(|INTNO_VALID|-1)．具体的なスロット数は chip 層 chip.tf
+$  の INTNO_VALID で決まる．
 $
 extern const uint32 kernel_vector_table[];$NL$
 $NL$

@@ -21,7 +21,9 @@ Locations (all use forward-slash MSYS-style for bash):
 | `rascc.exe` (FSP generator) | `/c/Renesas/RA/sc_v2025-12_fsp_v6.4.0/eclipse/rascc.exe` | EK-RA6M5 (one-shot, post-clone) |
 | J-Link CLI | `/c/Program Files/SEGGER/JLink_V920/JLink.exe` (already on `PATH`) | EK-RA6M5 flashing |
 
-One-liner to set up the shell for an EK-RA6M5 build:
+One-liner to set up the shell for an EK-RA6M5 build (assumes you've
+already run `rascc --generate target/ek_ra6m5_llvm/fsp/configuration.xml`
+once after clone — see "開発項目 / EK-RA6M5 ポート" below):
 
 ```sh
 MAKE='/c/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/eclipse/plugins/com.renesas.ide.exttools.gnumake.win32.x86_64_4.3.1.v20240909-0854/mk/make.exe'
@@ -29,7 +31,13 @@ export PATH="/c/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/toolchains/llvm_arm/ATfE
 cd obj/obj_ek_ra6m5 && "$MAKE" -j4
 ```
 
-The H5 build only needs `MAKE` (`arm-none-eabi-gcc` is already on `PATH`).
+NUCLEO-H563ZI build needs only `MAKE` exported (`arm-none-eabi-gcc` is
+already on `PATH` from `STM32CubeCLT`):
+
+```sh
+MAKE='/c/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/eclipse/plugins/com.renesas.ide.exttools.gnumake.win32.x86_64_4.3.1.v20240909-0854/mk/make.exe'
+cd obj/obj_nucleo_h563zi && "$MAKE" -j4
+```
 
 ## Common commands
 

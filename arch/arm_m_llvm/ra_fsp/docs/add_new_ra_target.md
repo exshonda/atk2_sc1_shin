@@ -2,19 +2,25 @@
 
 本ドキュメントは TOPPERS/ATK2 を **EK-RA6M5 以外の RA ボード** (例:
 EK-RA6M4, EK-RA4M2, FPB-RA6T2 等) に展開する手順を説明する．chip 層
-`arch/arm_m_llvm/ra_fsp/` は RA ファミリ汎用に設計されているため，
-target 層と obj/ ビルドディレクトリだけを新設すれば良い．
+`arch/arm_m_llvm/ra_fsp/` は **Cortex-M33 + 96-slot ICU** の RA で共通
+利用できる設計のため，対象がそのカテゴリに収まるなら target 層と
+`obj/` ビルドディレクトリだけを新設すれば良い．
 
 ## 1. 前提
 
 - 既に EK-RA6M5 ポート (`target/ek_ra6m5_llvm/`, `obj/obj_ek_ra6m5/`) が
   存在し，動作している (Phase 4 完了相当)．
-- 追加するチップが **Cortex-M33 + Renesas FSP 6.4.0** 対応であること．
-  - Cortex-M85 (RA8 系) は別途 `CORE_CPU=cortex-m85` で対応可だが
-    `-mfpu=fpv5-d16` 等の差異があるため動作確認が必要．
-  - Cortex-M4 系 (RA6M1/M2/M3 等) は本 chip 層では未対応．`arch/arm_m_llvm/`
-    系を流用しつつ別の chip ディレクトリを作るか，本 Makefile.chip を
-    M4 対応に拡張する必要．
+- 追加するチップが **Cortex-M33 + 96-slot ICU + FSP 6.4.0** 対応である
+  こと．`chip_config.h` / `chip.tf` の `TMIN_INTNO=16`, `TMAX_INTNO=111`,
+  `TNUM_INT=96`, `TBITW_IPRI=4` がそのまま適用できる前提．
+  - **RA8 系 (Cortex-M85 / 128-slot ICU)** は本 chip 層では未対応．
+    `chip_config.h` と `chip.tf` の INTNO 値が合わないため，chip 層の
+    フォーク or `MCU_GROUP` 分岐の導入が必要．本ドキュメント §4 は
+    その方向の概略．
+  - **RA2 系 (Cortex-M23)** は `BASEPRI` 非搭載のため未対応 (PRC 層が
+    要求)．
+  - **RA6M1/M2/M3 (Cortex-M4 系)** も本 chip 層対象外．別の chip
+    ディレクトリを作る必要．
 
 ## 2. 例: EK-RA6M4 を追加する手順
 
