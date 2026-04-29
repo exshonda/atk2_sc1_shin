@@ -38,7 +38,7 @@ obj/obj_ek_ra6m5/
    - `CFGNAME = sample1` + `target_serial` + `target_hw_counter` (H5 と同じ)
    - その他は基本そのまま (`SRCDIR = ../..`, `OBJDIR = objs`, `USE_PY_CFG ?= 1` 等)
 3. `flash` ターゲットを EK-RA6M5 用に修正:
-   - J-Link 経由 (推奨): `JLinkExe -device R7FA6M5BH -if SWD -speed 4000 -CommanderScript ...`
+   - J-Link 経由 (推奨): `JLink -device R7FA6M5BH -if SWD -speed 4000 -CommanderScript ...`
    - もしくは OpenOCD: `openocd -f interface/cmsis-dap.cfg -f target/renesas_ra6m5.cfg -c "program $(OBJNAME).srec verify reset exit"`
    - EK-RA6M5 の J-Link OB を使う場合は J-Link 推奨
 4. `debug` ターゲットも同様に J-Link GDB Server に切替え (`JLinkGDBServer -device R7FA6M5BH -if SWD &; arm-none-eabi-gdb ...`)．

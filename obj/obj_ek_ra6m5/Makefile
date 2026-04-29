@@ -542,7 +542,7 @@ $(OBJDIR)/%.o: %.S
 .PHONY: flash
 flash: $(OBJNAME).srec
 	@printf 'connect\nR7FA6M5BH\nS\n4000\nh\nloadfile $(OBJNAME).srec\nr\ng\nq\n' | \
-	    JLinkExe -nogui 1 -if SWD -speed 4000 -autoconnect 1
+	    JLink -nogui 1 -if SWD -speed 4000 -autoconnect 1
 
 #
 #  デバッグ起動 (J-Link GDB Server + LLVM lldb / arm-none-eabi-gdb)
