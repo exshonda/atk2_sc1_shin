@@ -214,7 +214,25 @@ Content で in-place 再生成できる．
 
 ### C. `rascc --generate` で `ra/` `ra_cfg/` `ra_gen/` を生成 〔Claude 実行可〕
 
-`configuration.xml` がコミットされた後，Claude が Bash 経由で実行:
+> **§B-3 との関係**: §B-3 の "Generate Project Content" (GUI ボタン) と
+> 本節 `rascc --generate` (CLI) は **機能的に等価**．入力は同じ
+> `configuration.xml`，出力は同じ `fsp/{ra,ra_cfg,ra_gen,...IDE 副生成物}`．
+> Renesas Configurator エンジンを GUI から呼ぶか CLI から呼ぶかの違い．
+>
+> したがって **§B-3 を完遂したセッション内では §C は不要** (生成物は既に
+> ある)．§C を実行するのは下記のいずれかの状況:
+>
+> 1. **別 clone / 別 PC**: configuration.xml はコミット済だが `fsp/ra/` 等が
+>    無い (clone 直後の通常状態)．
+> 2. **configuration.xml が更新された後**: `git pull` で本リポジトリを
+>    更新したら，ローカルの `fsp/ra/` 等が古い可能性．再生成する．
+> 3. **CI / ヘッドレス環境**: GUI 起動不可なので CLI 一択．
+> 4. **Claude が configuration.xml を編集して試行**: GUI を持たないので CLI．
+>
+> 通常開発フローでは「ユーザが §B で baseline を作って commit → 別 clone
+> またはセッション再開時に §C で再生成」というサイクル．
+
+`configuration.xml` がコミットされた後，Claude (または開発者) が Bash 経由で実行:
 
 ```sh
 "C:/Renesas/RA/sc_v2025-12_fsp_v6.4.0/eclipse/rascc.exe" \
@@ -224,8 +242,8 @@ Content で in-place 再生成できる．
     target/ek_ra6m5_llvm/fsp/configuration.xml
 ```
 
-実行後 `target/ek_ra6m5_llvm/fsp/` 配下に `ra/` `ra_cfg/` `ra_gen/` が新規作成．
-これらは `.gitignore` で除外されているため commit されない．
+実行後 `target/ek_ra6m5_llvm/fsp/` 配下に `ra/` `ra_cfg/` `ra_gen/` が新規作成
+(あるいは更新)．これらは `.gitignore` で除外されているため commit されない．
 
 成功条件:
 - exit code = 0
