@@ -16,11 +16,21 @@
 #
 
 #
-#  Makefile のチップ依存部（RA6M5 FSP用）
+#  Makefile のチップ依存部 (RA + Renesas FSP 共通; Cortex-M33 系)
 #
-#  Renesas FSP 6.1.0 を同梱．R7FA6M5BH (EK-RA6M5 搭載) を対象とする．
-#  CPU 共通部分のみここで定義．Smart Configurator が生成する
-#  ra_cfg/, ra_gen/ はターゲット依存部で扱う (Phase 1B 以降)．
+#  対応 RA ファミリ: RA4M2/M3, RA4E1/E2, RA6M4/M5, RA6T2 など
+#  Cortex-M33 + FPU 構成．Cortex-M85 系 (RA8) は CORE_CPU 上書きで対応可．
+#
+#  本層は **FSP ソースを同梱しない**．
+#  各ターゲットが `rascc.exe --generate <configuration.xml>` で
+#  `target/<TARGET>/ra/`, `ra_cfg/`, `ra_gen/` を生成する設計．
+#  詳細は `docs/fsp_setup.md` 参照．
+#
+#  ターゲット依存部 (`Makefile.target`) で必須:
+#    CHIP        = ra_fsp                                 (本ディレクトリ名)
+#    MCU_GROUP   = ra6m5 / ra6m4 / ra4m2 / ra6t2 ...      (FSP の bsp/mcu/<group>/)
+#    CORE_CPU    = (省略可) cortex-m33 / cortex-m85
+#    FPU_ARCH_OPT/MACRO は本ファイルが既定値 (Cortex-M33+FPU) を設定．
 #
 
 #
@@ -31,35 +41,47 @@ CHIPDIR = $(SRCDIR)/arch/$(PRC)_$(TOOL)/$(CHIP)
 #
 #  FSP ルートディレクトリ
 #
-FSPDIR = $(CHIPDIR)/fsp
+#  ターゲット直下の ra/fsp/ を指す．`rascc --generate <TARGETDIR>/configuration.xml`
+#  で生成される．git では gitignore 済 (.gitignore の target/*/ra/ 参照)．
+#
+FSPDIR = $(TARGETDIR)/ra/fsp
+
+#
+#  必須変数の検査
+#
+ifndef MCU_GROUP
+  $(error Makefile.target で MCU_GROUP を設定してください (例: MCU_GROUP=ra6m5))
+endif
 
 #
 #  コアタイプ
 #
-CORE_TYPE = CORTEX_M33
+CORE_CPU  ?= cortex-m33
+CORE_TYPE ?= CORTEX_M33
 
 #
 #  CPU 共通コンパイルオプション
 #  -mfloat-abi / -mfpu は Makefile.prc が FPU_USAGE に応じて付与する．
 #
-COPTS    := $(COPTS) -mcpu=cortex-m33 -mthumb
-LDFLAGS  := $(LDFLAGS) -mcpu=cortex-m33 -mthumb
-CDEFS    := $(CDEFS) -D_RENESAS_RA_ -D_RA_CORE=CM33 -D_RA_ORDINAL=1
+COPTS    := $(COPTS) -mcpu=$(CORE_CPU) -mthumb
+LDFLAGS  := $(LDFLAGS) -mcpu=$(CORE_CPU) -mthumb
+CDEFS    := $(CDEFS) -D_RENESAS_RA_
 
 #
-#  Cortex-M33 の FPU アーキテクチャ定義 (Makefile.prc が参照)
+#  Cortex-M33/M85 の FPU アーキテクチャ定義 (Makefile.prc が参照)
 #  FPU_ARCH_OPT   : -mfpu に渡す値
 #  FPU_ARCH_MACRO : ソースコード側で参照する判別マクロ名
+#  Cortex-M85 を使う場合は Makefile.target で上書きすること．
 #
-FPU_ARCH_OPT   = fpv5-sp-d16
-FPU_ARCH_MACRO = __TARGET_FPU_FPV5_SP
+FPU_ARCH_OPT   ?= fpv5-sp-d16
+FPU_ARCH_MACRO ?= __TARGET_FPU_FPV5_SP
 
 #
 #  ヘッダ・ライブラリ検索パス
 #
 #  FSP ヘッダは fsp/inc/ (API + instances) と fsp/src/bsp/ 以下に分散．
-#  bsp_cfg.h, fsp_cfg.h 等の Smart Configurator 生成ヘッダはターゲット
-#  依存部 (target/ek_ra6m5_gcc/ra_cfg/, ra_gen/) から取り込まれる．
+#  bsp_cfg.h, fsp_cfg.h 等の Smart Configurator 生成ヘッダは
+#  ターゲット依存部 ($(TARGETDIR)/ra_cfg/, ra_gen/) で取り込む．
 #
 INCLUDES := $(INCLUDES) -I$(CHIPDIR) \
             -I$(FSPDIR)/inc \
@@ -67,7 +89,7 @@ INCLUDES := $(INCLUDES) -I$(CHIPDIR) \
             -I$(FSPDIR)/inc/instances \
             -I$(FSPDIR)/src/bsp/cmsis/Device/RENESAS/Include \
             -I$(FSPDIR)/src/bsp/mcu/all \
-            -I$(FSPDIR)/src/bsp/mcu/ra6m5
+            -I$(FSPDIR)/src/bsp/mcu/$(MCU_GROUP)
 
 COPTS    := $(COPTS) -mlittle-endian
 LDFLAGS  := $(LDFLAGS) -mlittle-endian
@@ -80,7 +102,8 @@ LDFLAGS  := $(LDFLAGS) -mlittle-endian
 #
 #  FSP の startup.c (cmsis/Device/RENESAS/Source/startup.c) は使わない．
 #  ATK2 共通の arch/arm_m_gcc/common/start.S をリセットエントリとし，
-#  そこから FSP の SystemInit() (system.c) を呼び出す方針．
+#  hardware_init_hook / software_init_hook の弱定義を target 層が override
+#  して FSP 初期化を駆動する方針．SystemInit() は FSP の system.c が提供．
 #
 KERNEL_DIR     := $(KERNEL_DIR) $(CHIPDIR) \
                   $(FSPDIR)/src/bsp/mcu/all \

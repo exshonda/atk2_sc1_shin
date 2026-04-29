@@ -139,9 +139,9 @@ static TickType MAIN_HW_COUNTER_maxval;
  *  GPT320: フリーランニング上昇カウンタ起動
  *  GPT321: アラームタイマ設定（割込み有効, ワンショット）
  *
- *  PCLKD = 100MHz, GTCR.TPCS=DIV1 で 100MHz クロック源．
- *  Phase 2 では実 1MHz 化のためのソースクロック調整は Smart Configurator
- *  側で行うことを前提とし，ここでは frequency_hz 換算を呼出側に委ねる．
+ *  PCLKD = 100MHz / GTCR.TPCS=/4 = 25 MHz をタイマクロックとする．
+ *  TIMER_CLOCK_HZ (target_hw_counter.h) と target_hw_counter.arxml の
+ *  OsSecondsPerTick (4.0e-08 = 40 ns/tick) はこの 25 MHz に整合．
  */
 void
 init_hwcounter_MAIN_HW_COUNTER(TickType maxval, TimeType nspertick)
@@ -162,7 +162,7 @@ init_hwcounter_MAIN_HW_COUNTER(TickType maxval, TimeType nspertick)
     GPT_REG32(R_GPT320_BASE, GPT_GTPBR)    = 0xFFFFFFFFU;
     GPT_REG32(R_GPT320_BASE, GPT_GTCNT)    = 0U;
     GPT_REG32(R_GPT320_BASE, GPT_GTST)     = 0U;                       /* status クリア */
-    GPT_REG32(R_GPT320_BASE, GPT_GTCR)     = GTCR_TPCS_DIV1 | GTCR_MD_SAWWAVE; /* CST=0 でまだ停止 */
+    GPT_REG32(R_GPT320_BASE, GPT_GTCR)     = GTCR_TPCS_DIV4 | GTCR_MD_SAWWAVE; /* CST=0 でまだ停止 */
 
     /* ---- GPT321 初期化 (ワンショットアラーム, 割込み有効) ---- */
     GPT_REG32(R_GPT321_BASE, GPT_GTWP)     = GTWP_WRITE_ENABLE;
@@ -173,7 +173,7 @@ init_hwcounter_MAIN_HW_COUNTER(TickType maxval, TimeType nspertick)
     GPT_REG32(R_GPT321_BASE, GPT_GTPBR)    = 0xFFFFFFFFU;
     GPT_REG32(R_GPT321_BASE, GPT_GTCNT)    = 0U;
     GPT_REG32(R_GPT321_BASE, GPT_GTST)     = 0U;
-    GPT_REG32(R_GPT321_BASE, GPT_GTCR)     = GTCR_TPCS_DIV1 | GTCR_MD_SAWWAVE;
+    GPT_REG32(R_GPT321_BASE, GPT_GTCR)     = GTCR_TPCS_DIV4 | GTCR_MD_SAWWAVE;
 }
 
 /*

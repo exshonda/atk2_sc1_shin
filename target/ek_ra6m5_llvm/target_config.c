@@ -71,10 +71,10 @@ void R_BSP_WarmStart(bsp_warm_start_event_t event)
 #endif
 
 /*
- *  SCI9 レジスタアクセス
+ *  SCI3 レジスタアクセス
  *
- *  RA6M5 の R_SCI9 構造体 (R7FA6M5BH.h で定義) を使ってレジスタを直接操作する．
- *  R_SCI9 のメンバは Smart Configurator が出す `r_sci_uart.c` と整合する:
+ *  RA6M5 の R_SCI3 構造体 (R7FA6M5BH.h で定義) を使ってレジスタを直接操作する．
+ *  R_SCI3 のメンバは Smart Configurator が出す `r_sci_uart.c` と整合する:
  *      SMR / BRR / SCR / TDR / SSR / RDR / SCMR / SEMR / ...
  *  非同期 (調歩同期) モードでは SMR/BRR/SCR/TDR/SSR/RDR の 8-bit レジスタ群
  *  に並ぶ．
@@ -96,12 +96,12 @@ void R_BSP_WarmStart(bsp_warm_start_event_t event)
 #define SSR_PER             (1U << 3U)   /* Parity Error */
 
 /*
- *  SCI9 初期化（115200bps, 8N1, RX 割込み有効）
+ *  SCI3 初期化（115200bps, 8N1, RX 割込み有効）
  *
  *  クロック有効化 (MSTPCRB のビット解除) と PFS によるピン設定は
  *  本来 Smart Configurator 生成の bsp_clocks.c (R_BSP_WarmStart 内)
  *  および pin_data.c (R_IOPORT_Open) で行われる．
- *  ここでは BRR / SMR / SCR の SCI9 個別設定のみ行う．
+ *  ここでは BRR / SMR / SCR の SCI3 個別設定のみ行う．
  *
  *  BRR 計算: 非同期 baseclock = PCLKB．
  *    PCLKB = ICLK/2 = 100MHz (Smart Configurator 既定，要確認)
@@ -112,46 +112,46 @@ void R_BSP_WarmStart(bsp_warm_start_event_t event)
  *  SEMR の BGDM=1 / ABCS=1 を使えば誤差を減らせる．Phase 4 で精度向上
  *  検討．
  */
-static void sci9_low_init(void)
+static void sci3_low_init(void)
 {
     /* 送受信とも一旦停止 */
-    R_SCI9->SCR  = 0U;
+    R_SCI3->SCR  = 0U;
     /* 8bit, no parity, 1 stop, /1 baseclock */
-    R_SCI9->SMR  = 0U;
+    R_SCI3->SMR  = 0U;
     /* SCMR は default のまま (SCI 互換モード) */
-    R_SCI9->SCMR = 0xF2U;
+    R_SCI3->SCMR = 0xF2U;
     /* SEMR は default (BGDM/ABCS 未使用 → /32) */
-    R_SCI9->SEMR = 0U;
+    R_SCI3->SEMR = 0U;
     /* BRR: 100MHz / (32 * 115200) - 1 ≈ 26 */
-    R_SCI9->BRR  = 26U;
+    R_SCI3->BRR  = 26U;
     /* SSR の Error フラグをクリア (1 → 0 で書込み) */
-    R_SCI9->SSR  = (uint8_t)~(SSR_ORER | SSR_FER | SSR_PER);
+    R_SCI3->SSR  = (uint8_t)~(SSR_ORER | SSR_FER | SSR_PER);
     /* TE | RE | RIE で送信・受信・受信割込みを有効化 */
-    R_SCI9->SCR  = SCR_TE | SCR_RE | SCR_RIE;
+    R_SCI3->SCR  = SCR_TE | SCR_RE | SCR_RIE;
 }
 
 /*
- *  SCI9 受信割込みハンドラ (C2ISR)
+ *  SCI3 受信割込みハンドラ (C2ISR)
  *  target_serial.arxml で C2ISR(RxHwSerialInt) として登録．INTNO は
- *  Smart Configurator (vector_data.c) の SCI9_RXI スロットに依存 (TODO)．
+ *  Smart Configurator (vector_data.c) の SCI3_RXI スロットに依存 (TODO)．
  */
 extern void RxSerialInt(uint8 character);
 
 ISR(RxHwSerialInt)
 {
-    uint8 ssr = R_SCI9->SSR;
+    uint8 ssr = R_SCI3->SSR;
 
     /* 受信データあり (RDRF) */
     if ((ssr & SSR_RDRF) != 0U) {
-        uint8 ch = R_SCI9->RDR;             /* 読み出しで RDRF クリア */
-        /* SSR の RDRF は SCI9 では「読み込み後に 1 を 0 で書き戻す」必要 */
-        R_SCI9->SSR = (uint8)(ssr & (uint8)~SSR_RDRF);
+        uint8 ch = R_SCI3->RDR;             /* 読み出しで RDRF クリア */
+        /* SSR の RDRF は SCI3 では「読み込み後に 1 を 0 で書き戻す」必要 */
+        R_SCI3->SSR = (uint8)(ssr & (uint8)~SSR_RDRF);
         RxSerialInt(ch);
     }
 
     /* オーバーラン等のエラーフラグはクリアしておく */
     if ((ssr & (SSR_ORER | SSR_FER | SSR_PER)) != 0U) {
-        R_SCI9->SSR =
+        R_SCI3->SSR =
             (uint8)(ssr & (uint8)~(SSR_ORER | SSR_FER | SSR_PER));
     }
 
@@ -160,14 +160,14 @@ ISR(RxHwSerialInt)
 }
 
 /*
- *  SCI9 1文字送信（ポーリング）
+ *  SCI3 1文字送信（ポーリング）
  */
-static inline void sci9_putc(uint8 c)
+static inline void sci3_putc(uint8 c)
 {
     /* TDRE が立つまで待つ */
-    while ((R_SCI9->SSR & SSR_TDRE) == 0U) {
+    while ((R_SCI3->SSR & SSR_TDRE) == 0U) {
     }
-    R_SCI9->TDR = c;
+    R_SCI3->TDR = c;
     /* TDRE のクリアは TDR への書込みで HW が自動的に行う (RA6M5 SCI 仕様) */
 }
 
@@ -178,10 +178,10 @@ void
 target_fput_str(const char8 *c)
 {
     while (*c != '\0') {
-        sci9_putc((uint8)*c);
+        sci3_putc((uint8)*c);
         c++;
     }
-    sci9_putc((uint8)'\r');
+    sci3_putc((uint8)'\r');
 }
 
 /*
@@ -190,9 +190,9 @@ target_fput_str(const char8 *c)
 void
 target_fput_log(char8 c)
 {
-    sci9_putc((uint8)c);
+    sci3_putc((uint8)c);
     if (c == '\n') {
-        sci9_putc((uint8)'\r');
+        sci3_putc((uint8)'\r');
     }
 }
 
@@ -244,7 +244,7 @@ hardware_init_hook(void)
  *  順序:
  *    1. SystemInit() で FSP のクロック/CPACR/VTOR(暫定)/WarmStart チェイン
  *    2. R_IOPORT_Open() でピン設定 (Smart Configurator 生成 g_bsp_pin_cfg)
- *    3. SCI9 low-level 初期化 (本ファイル内 sci9_low_init)
+ *    3. SCI3 low-level 初期化 (本ファイル内 sci3_low_init)
  *    4. prc_hardware_initialize() (ATK2 共通)
  */
 void
@@ -264,8 +264,8 @@ target_hardware_initialize(void)
     R_IOPORT_Open(&g_ioport_ctrl, &g_bsp_pin_cfg);
 #endif
 
-    /* (3) SCI9 low-level 初期化 */
-    sci9_low_init();
+    /* (3) SCI3 low-level 初期化 */
+    sci3_low_init();
 
     /* (4) プロセッサ依存ハードウェア初期化 */
     prc_hardware_initialize();
@@ -274,7 +274,7 @@ target_hardware_initialize(void)
 /*
  *  ターゲット依存の初期化
  *  StartOS() の最初に呼び出される (kernel/osctl_manage.c)．
- *  クロック・SCI9 などのハードウェア初期化と，ARM Cortex-M33 の
+ *  クロック・SCI3 などのハードウェア初期化と，ARM Cortex-M33 の
  *  カーネル依存初期化 (VTOR, PendSV/SVC 優先度) をここで行う．
  *  さらに RA6M5 固有の ICU.IELSR テーブルを Smart Configurator 生成の
  *  g_interrupt_event_link_select[] からセットする．
@@ -282,7 +282,7 @@ target_hardware_initialize(void)
 void
 target_initialize(void)
 {
-    /* (1) クロック・SCI9・GPIO のハードウェア初期化 */
+    /* (1) クロック・SCI3・GPIO のハードウェア初期化 */
     target_hardware_initialize();
 
     /* (2) RA6M5 ICU.IELSR を Smart Configurator 生成テーブルから設定．

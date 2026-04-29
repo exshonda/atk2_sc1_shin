@@ -6,8 +6,8 @@
 
 ## 前提
 
-- Phase 1 完了 (`arch/arm_m_gcc/ra6m5_fsp/`)．
-- Phase 2 完了 (`target/ek_ra6m5_gcc/` 一式 + Smart Configurator 生成物)．
+- Phase 1 完了 (`arch/arm_m_llvm/ra_fsp/`)．
+- Phase 2 完了 (`target/ek_ra6m5_llvm/` 一式 + Smart Configurator 生成物)．
 
 ## 設計判断
 
@@ -34,7 +34,7 @@ obj/obj_ek_ra6m5/
 
 1. `obj/obj_nucleo_h563zi/Makefile` を `obj/obj_ek_ra6m5/Makefile` に複製．
 2. 主要変更点:
-   - `TARGET = ek_ra6m5_gcc`
+   - `TARGET = ek_ra6m5_llvm`
    - `CFGNAME = sample1` + `target_serial` + `target_hw_counter` (H5 と同じ)
    - その他は基本そのまま (`SRCDIR = ../..`, `OBJDIR = objs`, `USE_PY_CFG ?= 1` 等)
 3. `flash` ターゲットを EK-RA6M5 用に修正:
@@ -52,8 +52,8 @@ obj/obj_ek_ra6m5/
    - **pass3 で `magic number is not found`** → `cfg1_out` リンクで `--no-gc-sections` (`CFG1_OUT_LDFLAGS`) が効いているか確認．
    - **FSP `Default_Handler` と ATK2 ベクタの衝突** → `Os_Lcfg.c` 生成のベクタが上書きされているはず．診断は `nm $(OBJFILE) | grep -E "Reset_Handler|Default_Handler"`．
 7. ELF が出たら検証:
-   - `arm-none-eabi-objdump -h atk2-sc1` で `.isr_vector @ 0x00000000`, `.text`, `.data`, `.bss` 配置確認．
-   - `arm-none-eabi-size atk2-sc1` で text/data/bss サイズが妥当か (text < 1 MB 程度)．
+   - `llvm-objdump -h atk2-sc1` で `.isr_vector @ 0x00000000`, `.text`, `.data`, `.bss` 配置確認．
+   - `llvm-size atk2-sc1` で text/data/bss サイズが妥当か (text < 1 MB 程度)．
    - `Os_Cfg.h` を開き，`tmin_basepri = 0x10`，`tnum_isr2`，`tnum_alm` 等が想定通りか目視確認．
 8. **コミット**: `obj/obj_ek_ra6m5: Makefile 追加 + 初回ビルド成功`
 
@@ -62,7 +62,7 @@ obj/obj_ek_ra6m5/
 - [ ] `cd obj/obj_ek_ra6m5 && make -j4` がエラーなく完走．
 - [ ] `atk2-sc1`, `atk2-sc1.srec`, `atk2-sc1.dump`, `atk2-sc1.map` 生成．
 - [ ] pass3 が "0 errors" で完了．
-- [ ] `arm-none-eabi-size atk2-sc1` の出力が妥当．
+- [ ] `llvm-size atk2-sc1` の出力が妥当．
 - [ ] **実機書込みは Phase 4 で実施**．Phase 3 はあくまで「ホストでビルドが通る」まで．
 
 ## リスク
@@ -71,7 +71,7 @@ obj/obj_ek_ra6m5/
 |---|---|---|
 | FSP `bsp_irq.c` の弱定義シンボルが ATK2 ベクタテーブルと整合しない | `nm` でシンボル衝突確認．必要なら `bsp_irq.c` を除外 | Phase 1 codex レビューで先行確認 |
 | FSP の `system.c` `SystemInit()` 内で VTOR を書換えている (line 236) | ATK2 ベクタが上書きされる．順序を `target_hardware_initialize()` (FSP SystemInit) → `target_initialize()` (`prc_initialize()` で VTOR を ATK2 ベクタへ再書込) で守る | Phase 2 で確定 |
-| **RA6M5 の Option Setting Memory (OFS0/OFS1/OSIS) が未配置で起動しない** | `arch/arm_m_gcc/ra6m5_fsp/fsp/src/bsp/mcu/ra6m5/bsp_linker.c` が OFS デフォルト値を `.option_setting_*` セクションに配置している．**Phase 3 で本ファイルを `KERNEL_COBJS` に追加し，`r7fa6m5bh.ld` に対応セクションを設置する**． | Phase 3 ビルド時に対応 (Phase 1 では未対応) |
+| **RA6M5 の Option Setting Memory (OFS0/OFS1/OSIS) が未配置で起動しない** | `arch/arm_m_llvm/ra_fsp/fsp/src/bsp/mcu/ra6m5/bsp_linker.c` が OFS デフォルト値を `.option_setting_*` セクションに配置している．**Phase 3 で本ファイルを `KERNEL_COBJS` に追加し，`r7fa6m5bh.ld` に対応セクションを設置する**． | Phase 3 ビルド時に対応 (Phase 1 では未対応) |
 | FSP `bsp_init`(`bsp_common.c`) などの WeakSymbol が未定義のまま残ると weak のデフォルト動作になる | 必要時に target 層で `bsp_init(void *)` 等を override | Phase 3 ビルド時に判明 |
 | Windows make の高並列度問題 | `-j4` 上限固定．`Makefile` のデフォルト記述で誘導 | Makefile に注記 |
 

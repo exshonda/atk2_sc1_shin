@@ -99,4 +99,17 @@ The application's static OS configuration (tasks, alarms, counters, ISRs, resour
 - EK-RA6M5 向けの依存部を開発する
   - コア依存部（./arch/arm_m_gcc/common）は変更せずにそのまま使用する
   - RenesasのFSPドライバを使ってよい
-    - NUCLEO-H563ZIと同様に可能な限り，オリジナルのコードとして別のディレクトリに格納する
+    - **FSP ソースはリポジトリに同梱しない**．`configuration.xml` のみコミットし，clone 後にユーザが `rascc.exe --generate` で `target/<TARGET>/ra/` `ra_cfg/` `ra_gen/` を生成する．手順は [`arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md`](arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md) 参照．
+  - 将来的に同じ Cortex-M33 を搭載した他の RA シリーズ (RA4M2/M3, RA6M4, RA6T2, RA8M1 等) に展開可能な構成とする．chip 層 `arch/arm_m_llvm/ra_fsp/` は RA ファミリ汎用．`MCU_GROUP` (`ra6m5`/`ra6m4`/`ra4m2` 等) と `CORE_CPU` (`cortex-m33`/`cortex-m85`) を `Makefile.target` で指定する設計．
+
+### EK-RA6M5 ポート: 重要な構成情報
+
+- **コンパイラ**: **ARM LLVM (Arm Toolchain for Embedded; ATfE) 21.1.1**．Renesas e² studio v2025-12 に同梱．`C:/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/toolchains/llvm_arm/ATfE-21.1.1-Windows-x86_64/bin/clang.exe`．`--target=arm-none-eabi` で ARM ELF を生成．
+- **プロセッサ依存部**: `arch/arm_m_llvm/common/` (LLVM 用 Makefile.prc のみ)．**ソース本体 (`start.S`, `prc_config.{c,h}`, `prc_support.S` 等) は `arch/arm_m_gcc/common/` を vpath 経由で再利用** (`arch/arm_m_gcc/common/` は変更しない方針を維持)．
+- **チップ依存部**: `arch/arm_m_llvm/ra_fsp/` (RA ファミリ汎用; FSP 同梱しない)．`MCU_GROUP` 変数で個別チップに対応 (例: `ra6m5`, `ra6m4`, `ra4m2`, `ra6t2`)．`CORE_CPU` 上書きで Cortex-M85 (RA8) も対応可．
+- **ターゲット依存部**: `target/ek_ra6m5_llvm/` (EK-RA6M5 ボード固有)
+- **ビルドディレクトリ**: `obj/obj_ek_ra6m5/` (Phase 3 で作成予定)
+- **FSP**: バージョン 6.4.0 (Renesas Smart Configurator sc_v2025-12)．`C:/Renesas/RA/sc_v2025-12_fsp_v6.4.0/eclipse/rascc.exe`．
+- **シリアル (ログ出力)**: **SCI3 経由 Arduino D0/D1**．EK-RA6M5 の J24 ヘッダ Pin 0 (RX = P303 = RXD3) / Pin 1 (TX = P302 = TXD3)．115200 bps, 8N1．外付け USB-Serial 変換アダプタを J24 に接続して使う想定．J-Link OB VCOM (SCI9) は使用しない．
+- **clone 後の必須作業**: `rascc --generate target/ek_ra6m5_llvm/configuration.xml` を実行すること．生成物 `ra/` `ra_cfg/` `ra_gen/` は `.gitignore` で除外．手順詳細は [`arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md`](arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md)．
+- **段階的実装計画**: `phase1.md`〜`phase6.md` 参照．現状は Phase 2-A (Smart Configurator baseline 取込) 待ち．

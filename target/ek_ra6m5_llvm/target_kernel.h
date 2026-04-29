@@ -49,11 +49,17 @@
  *  で定義される (TMIN_INTNO=16, TMAX_INTNO=147, TBITW_IPRI=4)．
  *
  *  RA6M5 の NVIC スロット数は 96 (BSP_ICU_VECTOR_NUM_ENTRIES) で
- *  IRQ0..IRQ95 → INTNO 16..111 の範囲を使う．prc_config.h の TMAX_INTNO=147
- *  はこれを包含する上位互換値であり，cfg ツールは VALID_INTNO で範囲外を
- *  検出するだけなので RA6M5 でも安全に動作する (実際に 147 を超える IRQ は
- *  Smart Configurator が割り当てない)．Phase 4 で必要なら共通部に変更を
- *  入れる議論を行う．
+ *  IRQ0..IRQ95 → INTNO 16..111 の範囲しか持たないが，prc_config.h は
+ *  「arch/arm_m_gcc/common は変更しない」方針のもと変更不可，かつ #ifndef
+ *  ガードが無いため target 層からの単純な #undef/#define では上書きできない．
+ *
+ *  TMAX_INTNO=147 は H5 から流用された上位互換値．VALID_INTNO の範囲外
+ *  検出が IRQ95..IRQ131 の範囲で甘くなる (実害なし，Smart Configurator が
+ *  IRQ95 を超える値を割り当てない)．Phase 4 で共通部に
+ *  `#ifndef TMAX_INTNO` ガードを足す等の改善を別途検討．
+ *
+ *  TODO[Phase 4]: prc_config.h に TMAX_INTNO の override 機構を入れて
+ *                 ここで UINT_C(111) に絞り込む．
  */
 #include "prc_kernel.h"
 

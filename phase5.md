@@ -21,7 +21,7 @@ cfg/cfg_py/tests/
 ├── fixtures/
 │   └── ek_ra6m5/
 │       ├── sample1.arxml           sample1 + ターゲットアラーム
-│       ├── target_serial.arxml     SCI9 ISR 定義
+│       ├── target_serial.arxml     SCI3 ISR 定義
 │       ├── target_hw_counter.arxml GPT321 ISR 定義
 │       └── expected/
 │           ├── cfg1_out.c

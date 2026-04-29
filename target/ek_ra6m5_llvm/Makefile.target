@@ -16,17 +16,28 @@
 #
 
 #
-#  Makefile のターゲット依存部（EK_RA6M5_GCC用）
+#  Makefile のターゲット依存部 (EK-RA6M5 + ARM LLVM)
+#
+#  Renesas EK-RA6M5 (R7FA6M5BH) を **ARM LLVM (Arm Toolchain for Embedded;
+#  ATfE)** でビルドするための設定．Renesas e² studio v2025-12 同梱の ATfE
+#  21.1.1 を想定．インストール先:
+#    C:/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/toolchains/llvm_arm/ATfE-21.1.1-Windows-x86_64/bin/
 #
 
 #
 #  ボード名，チップ名，プロセッサ名，開発環境名の定義
 #
-TARGET = ek_ra6m5_gcc
+TARGET = ek_ra6m5_llvm
 BOARD  = ek_ra6m5
-CHIP   = ra6m5_fsp
+CHIP   = ra_fsp
 PRC    = arm_m
-TOOL   = gcc
+TOOL   = llvm
+
+#
+#  RA ファミリ MCU グループ識別子 (FSP の bsp/mcu/<group>/ に対応)
+#  Makefile.chip の include パスで参照される．
+#
+MCU_GROUP = ra6m5
 
 #
 #  FPU を使用するか
@@ -51,7 +62,17 @@ INCLUDES := $(INCLUDES) -I$(TARGETDIR) \
                         -I$(RA_CFG_DIR)/fsp_cfg \
                         -I$(RA_CFG_DIR)/fsp_cfg/bsp \
                         -I$(RA_GEN_DIR)
-CDEFS    := $(CDEFS) -DINIT_MSP
+CDEFS    := $(CDEFS) -DINIT_MSP \
+                     -DEK_RA6M5_HAVE_VECTOR_DATA \
+                     -DEK_RA6M5_USE_FSP_PINCFG
+#
+#  EK_RA6M5_HAVE_VECTOR_DATA : target_config.c 内の R_ICU->IELSR[] 設定
+#                              ループを有効化．Phase 2-A で
+#                              ra_gen/vector_data.c が用意される前提．
+#  EK_RA6M5_USE_FSP_PINCFG   : target_config.c 内の R_IOPORT_Open(...,
+#                              g_bsp_pin_cfg) 呼出を有効化．Phase 2-A で
+#                              ra_gen/pin_data.c が用意される前提．
+#
 COPTS    := $(COPTS) -ffunction-sections -fdata-sections
 LDFLAGS  := $(LDFLAGS) -Wl,--gc-sections
 

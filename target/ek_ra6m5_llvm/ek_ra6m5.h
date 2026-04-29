@@ -45,9 +45,18 @@
 #define PCLKD_HZ        100000000U
 
 /*
- *  SCI9 関連定義 (P602=TXD9, P603=RXD9, AF6 = SCI9 PSEL=00100)
- *  EK-RA6M5 の J-Link OB VCOM が SCI9 に接続．
- *  レジスタアクセスは bsp_api.h 経由で取り込む R7FA6M5BH.h の R_SCI9 を
+ *  SCI3 関連定義
+ *
+ *  EK-RA6M5 の Arduino-UNO 互換ヘッダ J24 D0 (Pin 0, RX) / D1 (Pin 1, TX) に
+ *  接続される SCI3 を使用する．
+ *    P303 = RXD3  (J24-D0, ボード Pin 0)
+ *    P302 = TXD3  (J24-D1, ボード Pin 1)
+ *    PSEL = 00100 (= 4) で SCI に切替．
+ *
+ *  USB-Serial 変換アダプタ (FTDI 等) を J24-D0/D1 に接続して使用する想定．
+ *  J-Link OB 経由の VCOM (SCI9) は使用しない．
+ *
+ *  レジスタアクセスは bsp_api.h 経由で取り込む R7FA6M5BH.h の R_SCI3 を
  *  使うため，本ヘッダではベースアドレスは定義しない．
  */
 #define BPS_SETTING     115200U

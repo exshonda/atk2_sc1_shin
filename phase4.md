@@ -36,19 +36,19 @@ Phase 3 で生成された `atk2-sc1.srec` を実機 EK-RA6M5 に書き込み，
 
 ### 4-3. シリアル送信のみ
 
-**目的**: SCI9 TX が ISR 無しで動作することを確認．
+**目的**: SCI3 TX が ISR 無しで動作することを確認．
 
-1. `target_config.c` の SCI9 初期化を実行し，ポーリングで `"Hello EK-RA6M5\n"` を送信．
+1. `target_config.c` の SCI3 初期化を実行し，ポーリングで `"Hello EK-RA6M5\n"` を送信．
 2. ホスト PC の Tera Term (115200, 8N1, No flow control) で受信確認．
 3. 失敗時:
-   - 文字化け → ボーレート設定．`SCI9.SCR` `BRR` レジスタ値．
-   - 何も出ない → ピン設定．P602 が AF (PSEL=04 → SCI9_TXD) になっているか確認．`pin_data.c` の生成内容を確認．
+   - 文字化け → ボーレート設定．`SCI3.SCR` `BRR` レジスタ値．
+   - 何も出ない → ピン設定．P302 (Arduino D1) が AF (PSEL=04 → SCI3_TXD) になっているか確認．`pin_data.c` の生成内容を確認．
 
 ### 4-4. シリアル ISR 駆動 RX
 
-**目的**: ATK2 の `interrupt_entry` 経由で SCI9 RXI ISR が呼べることを確認．
+**目的**: ATK2 の `interrupt_entry` 経由で SCI3 RXI ISR が呼べることを確認．
 
-1. `target_serial.arxml` の INTNO が `g_interrupt_event_link_select` の SCI9_RXI スロット番号と一致しているか再確認．
+1. `target_serial.arxml` の INTNO が `g_interrupt_event_link_select` の SCI3_RXI スロット番号と一致しているか再確認．
 2. `target_initialize()` 内で IELSR を設定: `R_ICU->IELSR_b[i].IELS = (event_id)`．
 3. `sysmod/serial.c` 経由で `Input Command:` プロンプトが表示され，1 文字キー入力でエコーバックされることを確認．
 4. 失敗時:

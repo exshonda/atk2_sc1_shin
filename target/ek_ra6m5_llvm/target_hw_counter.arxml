@@ -37,20 +37,20 @@
 									<DEFINITION-REF DEST="ECUC-INTEGER-PARAM-DEF">/AUTOSAR/EcucDefs/Os/OsCounter/OsCounterMaxAllowedValue</DEFINITION-REF>
 									<VALUE>2147483647</VALUE>
 								</ECUC-NUMERICAL-PARAM-VALUE>
-								<!-- MinCycle = 1000 ticks = 1ms -->
+								<!-- MinCycle = 25 ticks (= 1us @ 25MHz) -->
 								<ECUC-NUMERICAL-PARAM-VALUE>
 									<DEFINITION-REF DEST="ECUC-INTEGER-PARAM-DEF">/AUTOSAR/EcucDefs/Os/OsCounter/OsCounterMinCycle</DEFINITION-REF>
-									<VALUE>1000</VALUE>
+									<VALUE>25</VALUE>
 								</ECUC-NUMERICAL-PARAM-VALUE>
-								<!-- TicksPerBase = 1000 (1000 ticks = 1ms base) -->
+								<!-- TicksPerBase = 25000 (1ms @ 25MHz) -->
 								<ECUC-NUMERICAL-PARAM-VALUE>
 									<DEFINITION-REF DEST="ECUC-INTEGER-PARAM-DEF">/AUTOSAR/EcucDefs/Os/OsCounter/OsCounterTicksPerBase</DEFINITION-REF>
-									<VALUE>1000</VALUE>
+									<VALUE>25000</VALUE>
 								</ECUC-NUMERICAL-PARAM-VALUE>
-								<!-- SecondsPerTick = 1us = 1.0e-6 s -->
+								<!-- SecondsPerTick = 40ns = 4.0e-08 s (PCLKD=100MHz / 4) -->
 								<ECUC-NUMERICAL-PARAM-VALUE>
 									<DEFINITION-REF DEST="ECUC-FLOAT-PARAM-DEF">/AUTOSAR/EcucDefs/Os/OsCounter/OsSecondsPerTick</DEFINITION-REF>
-									<VALUE>1.0e-06</VALUE>
+									<VALUE>4.0e-08</VALUE>
 								</ECUC-NUMERICAL-PARAM-VALUE>
 								<ECUC-TEXTUAL-PARAM-VALUE>
 									<DEFINITION-REF DEST="ECUC-ENUMERATION-PARAM-DEF">/AUTOSAR/EcucDefs/Os/OsCounter/OsCounterType</DEFINITION-REF>

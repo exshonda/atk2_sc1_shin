@@ -2,7 +2,7 @@
 
 本ドキュメントは TOPPERS/ATK2 を **Renesas RA** ターゲットでビルドする
 ために，**clone 後にユーザが 1 回実施する必須手順** を説明する．対象は
-`target/ek_ra6m5_gcc/` 等の **RA 系ターゲットすべて**．
+`target/ek_ra6m5_llvm/` 等の **RA 系ターゲットすべて**．
 
 ## 1. なぜ手作業が必要か
 
@@ -68,14 +68,14 @@ RASCC="C:/Renesas/RA/sc_v2025-12_fsp_v6.4.0/eclipse/rascc.exe"
 "$RASCC" \
     --generate \
     --device R7FA6M5BH3CFC \
-    --compiler GCC \
-    target/ek_ra6m5_gcc/configuration.xml
+    --compiler LLVMARM \
+    target/ek_ra6m5_llvm/configuration.xml
 ```
 
-実行が成功すると下記が `target/ek_ra6m5_gcc/` 配下に **新規作成** される:
+実行が成功すると下記が `target/ek_ra6m5_llvm/` 配下に **新規作成** される:
 
 ```
-target/ek_ra6m5_gcc/
+target/ek_ra6m5_llvm/
 ├── ra/                       FSP ソース (約 60 MB)
 │   └── fsp/
 │       ├── inc/
@@ -96,7 +96,7 @@ target/ek_ra6m5_gcc/
 `target/<TARGET>/configuration.xml` がコミットされていれば，同じ手順で生成可能:
 
 ```sh
-"$RASCC" --generate --device <DEVICE_PARTNUMBER> --compiler GCC \
+"$RASCC" --generate --device <DEVICE_PARTNUMBER> --compiler LLVMARM \
     target/<TARGET>/configuration.xml
 ```
 

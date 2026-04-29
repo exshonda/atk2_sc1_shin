@@ -41,45 +41,57 @@
 #define MAX_CNT_CYCLE       ((uint32) 0x7FFFFFFFU)
 
 /*
- *  タイマクロック周波数 (PCLKD=100MHz / TPCS=2 (16分周) … では 1MHz に
- *  ならないので CKEG/PRV を組合せて 1MHz を作る．
- *  RA6M5 GPT は GTCR.TPCS で {/1, /4, /16, /64, /256, /1024} を選べる．
- *  PCLKD=100MHz を 1MHz にするには /100 が必要だが GPT は /100 を直接
- *  サポートしないため，下記いずれか:
- *    (a) PCLKD を 1MHz の倍数にする (Smart Configurator で PCLKD 変更)
- *    (b) PCLKD/64 = 1.5625MHz を採用 (1us tick とは誤差あり)
- *    (c) GTPR で 100 カウントごとに割込み発生 + 自前カウンタを加算
- *  Phase 2 では (c) を見送り，PCLKD/4 = 25MHz をベースに GTPR=25-1 で
- *  1MHz tick を生成 (オーバーフローで GTCNT を 0 にリセット)．
- *  → ただし 32bit GTCNT を使うなら GTPR を 0xFFFFFFFF にしてフリーラン
- *     する方が単純．本実装ではフリーラン+ソフトウェアスケーリングを採用．
+ *  タイマクロック周波数
  *
- *  暫定方針: PCLKD/4 = 25MHz でフリーランさせ，TickType を 32bit GTCNT
- *  生値とする．1MHz 換算は呼び出し側で行わず，TICK_FOR_1MS を 25000 に
- *  すれば論理 1MHz と等価になる．
+ *  RA6M5 GPT のプリスケーラ TPCS は {/1, /4, /16, /64, /256, /1024} の
+ *  6 値しか選べないため，Smart Configurator 既定の PCLKD=100MHz から
+ *  正確に 1MHz を作ることはできない．本実装では下記を採用:
  *
- *  TODO[Phase 2-B]: GPT のクロック源を最終決定．以下の値はその選択に
- *  応じて再計算が必要．
+ *    GTCR.TPCS = /4   →  100 MHz / 4 = 25 MHz (= 40 ns / tick)
+ *
+ *  この選択により:
+ *    - GPT の実カウンタ更新は 25 MHz (誤差なしの整数分周)
+ *    - TIMER_CLOCK_HZ = 25 MHz とし，AUTOSAR の OsSecondsPerTick に
+ *      4.0e-08 (= 40 ns/tick) を整合させる (target_hw_counter.arxml)
+ *    - 32-bit フリーラン GTCNT の最大周期 = 0xFFFFFFFF / 25MHz ≈ 171 秒
+ *    - 1ms = 25000 tick， 1秒 = 25M tick．sample1 の 5 秒ウェイトも
+ *      余裕で 32-bit 範囲内 (5 × 25M = 125M < 4.29G)．
+ *
+ *  「1MHz 1us tick」を厳守したい場合は Smart Configurator で
+ *  PCLKD を 64 MHz (or 16 MHz 等の 2 のべき倍数) に変更し
+ *  TPCS=/64 (or /16) で 1MHz を作るのが望ましいが，本ポートでは
+ *  既定 PCLKD=100MHz を尊重し，AUTOSAR 契約側を 25 MHz tick に
+ *  揃える．
  */
-#define TIMER_CLOCK_HZ      ((uint32) 1000000U)
+#define TIMER_CLOCK_HZ      ((uint32) 25000000U)    /* PCLKD / 4 = 25 MHz */
 
 /*
- *  サンプル用ティック数定義（タイマクロック1MHz基準）
+ *  サンプル用ティック数定義 (TIMER_CLOCK_HZ = 25 MHz 基準)
+ *  sample1.c は TICK_FOR_1MS / TICK_FOR_10MS / TICK_FOR_1S を使う．
  */
-#define TICK_FOR_1MS        (TIMER_CLOCK_HZ / 1000)
-#define TICK_FOR_10MS       (TIMER_CLOCK_HZ / 100)
-#define TICK_FOR_1S         (TIMER_CLOCK_HZ)
+#define TICK_FOR_1MS        (TIMER_CLOCK_HZ / 1000)     /* = 25000 */
+#define TICK_FOR_10MS       (TIMER_CLOCK_HZ / 100)      /* = 250000 */
+#define TICK_FOR_1S         (TIMER_CLOCK_HZ)            /* = 25000000 */
 
 /*
  *  GPT320 / GPT321 割込み番号
  *
- *  RA6M5 NVIC スロットは Smart Configurator の vector_data.c で
- *  決定する．GPT321 のオーバーフロー割込み (GPT321_OVF) に割り当てられた
- *  スロット番号 N から INTNO = N + 16 で算出すること．
- *  TODO[Phase 2-A]: vector_data.c 受領後に確定値に置換．
+ *  ★★★ TODO[Phase 2-A 必須]: 暫定値 — Smart Configurator 出力受領後に
+ *                              必ず実値に置き換えること ★★★
+ *
+ *  RA6M5 NVIC スロットは Smart Configurator (target/ek_ra6m5_llvm/ra_gen/
+ *  vector_data.c) の `g_interrupt_event_link_select[]` で決定する．
+ *  GPT321 オーバーフロー割込み (GPT321_OVF; GPT_OVF if "GPT_AGT_OVF" 等
+ *  Smart Configurator 命名) のスロット N を確認し
+ *  `GPT321_INTNO = N + 16` に修正．`target_hw_counter.arxml` の
+ *  `<VALUE>` も同値に合わせること．INTNO 不一致のまま実機実行すると
+ *  ATK2 アラームが起動せず，sample1 の `MainCyc` が動かない．
+ *
+ *  GPT320 はフリーランニングで割込み未使用なので INTNO は参照されないが，
+ *  cfg ツール都合で形式上定義．
  */
-#define GPT320_INTNO        UINT_C(17)   /* 暫定: TODO Smart Configurator 後確定 */
-#define GPT321_INTNO        UINT_C(18)   /* 暫定: TODO Smart Configurator 後確定 */
+#define GPT320_INTNO        UINT_C(17)   /* TODO[Phase 2-A]: 暫定 (未使用) */
+#define GPT321_INTNO        UINT_C(18)   /* TODO[Phase 2-A]: 暫定．要修正 */
 
 /*
  *  MAIN_HW_COUNTER 操作関数プロトタイプ
