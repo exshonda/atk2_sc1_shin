@@ -62,11 +62,11 @@ R7FA6M5BH のメモリマップ:
 | タブ | 設定 |
 |---|---|
 | **Clocks** | HOCO 20MHz → PLL → ICLK 200MHz, PCLKD = ICLK/2 = 100MHz |
-| **Stacks → New Stack → Driver → Connectivity → r_sci_uart** | SCI3 を選択 |
+| **Stacks → New Stack → Driver → Connectivity → r_sci_uart** | SCI7 を選択 |
 | **Stacks → New Stack → Driver → Timers → r_gpt** | GPT320 (32-bit) を選択．Mode=Free Run，1 MHz は target_hw_counter.c 側で対応 |
 | **Stacks → New Stack → Driver → Timers → r_gpt** | GPT321 (32-bit) を選択．Mode=One-Shot |
 | **Stacks → New Stack → Driver → Input → r_ioport** | デフォルトのまま (ボード設定の pin_data を使う) |
-| **Pins** | P303=RXD3 (Arduino D0 = Pin 0), P302=TXD3 (Arduino D1 = Pin 1) が AF (SCI3) になっていることを確認 |
+| **Pins** | P614=RXD7 (Arduino D0 = Pin 0), P613=TXD7 (Arduino D1 = Pin 1) が AF (SCI7) になっていることを確認 |
 | **Properties** | (任意) 各モジュールの Interrupt Priority を確認 |
 
 `Generate Project Content` をクリック．
@@ -90,7 +90,7 @@ R7FA6M5BH のメモリマップ:
 
 | 用途 | 対応イベント | コード上の場所 | 確認後の値 |
 |---|---|---|---|
-| シリアル受信 | `BSP_PRV_VECTOR_EVENT_SCI3_RXI` | [`target_serial.h`](target_serial.h) `INTNO_SIO`, [`target_serial.arxml`](target_serial.arxml) | TODO |
+| シリアル受信 | `BSP_PRV_VECTOR_EVENT_SCI7_RXI` | [`target_serial.h`](target_serial.h) `INTNO_SIO`, [`target_serial.arxml`](target_serial.arxml) | TODO |
 | HW カウンタ Alarm | `BSP_PRV_VECTOR_EVENT_GPT321_OVF` 相当 (GTPR 周期割込) | [`target_hw_counter.h`](target_hw_counter.h) `GPT321_INTNO`, [`target_hw_counter.arxml`](target_hw_counter.arxml) | TODO |
 
 ## 4. システムクロック・ペリフェラル
@@ -111,8 +111,8 @@ R7FA6M5BH のメモリマップ:
 
 | 信号 | ピン | 役割 | 代替機能 |
 |---|---|---|---|
-| SCI3_RXD | P303 (Arduino J24-D0, Pin 0) | シリアル受信 | AF (SCI3) |
-| SCI3_TXD | P302 (Arduino J24-D1, Pin 1) | シリアル送信 | AF (SCI3) |
+| SCI7_RXD | P614 (Arduino J24-D0, Pin 0) | シリアル受信 | AF (SCI7) |
+| SCI7_TXD | P613 (Arduino J24-D1, Pin 1) | シリアル送信 | AF (SCI7) |
 | LED1 (Blue) | P006 | (アプリ用予約) | GPIO Out |
 | LED2 (Green) | P004 | (アプリ用予約) | GPIO Out |
 | LED3 (Red) | P008 | (アプリ用予約) | GPIO Out |
@@ -122,7 +122,7 @@ R7FA6M5BH のメモリマップ:
 
 | 用途 | ペリフェラル | 詳細 |
 |---|---|---|
-| シリアル (SIO) | **SCI3** | 115200bps, 8N1, 割込み駆動 RX (`INTNO_SIO=TODO`, INTPRI=2) |
+| シリアル (SIO) | **SCI7** | 115200bps, 8N1, 割込み駆動 RX (`INTNO_SIO=TODO`, INTPRI=2) |
 | ハードウェアカウンタ (フリーランニング) | **GPT320** | 32-bit, PCLKD 直結 (1MHz 換算は target_hw_counter.h の TIMER_CLOCK_HZ で調整) |
 | ハードウェアカウンタ (アラーム) | **GPT321** | 32-bit, ワンショット, 割込み有効 (`GPT321_INTNO=TODO`, INTPRI=1) |
 
@@ -138,7 +138,7 @@ ARM Cortex-M33 の優先度ビット幅は 4bit (0x00 〜 0xF0):
 |---|---|---|
 | C2ISR の最高優先度 (`tmin_basepri`) | 0x10 | OS 割込み禁止の閾値 |
 | GPT321 (HW カウンタアラーム) | 0x10 | INTPRI=1 |
-| SCI3 RXI | 0x20 | INTPRI=2 |
+| SCI7 RXI | 0x20 | INTPRI=2 |
 | SVCall | 0xE0 | OS 割込み禁止より低 |
 | PendSV | 0xFF | 最低 (tail-chain で動く) |
 
@@ -219,9 +219,9 @@ target/ek_ra6m5_llvm/
 ├── README.md                       このファイル
 ├── Makefile.target                 Makefile のターゲット依存部
 ├── r7fa6m5bh.ld                    リンカスクリプト
-├── ek_ra6m5.h                      ボード資源定義 (ピン, クロック, SCI3 ベース)
+├── ek_ra6m5.h                      ボード資源定義 (ピン, クロック, SCI7 ベース)
 ├── target_kernel.h                 カーネル設定 (スタックサイズ等)
-├── target_config.c / .h            初期化・SCI3 ドライバ・ISR テーブル
+├── target_config.c / .h            初期化・SCI7 ドライバ・ISR テーブル
 ├── target_serial.h                 sysmod/serial.c 用ヘッダ (INTNO_SIO 等)
 ├── target_serial.arxml             シリアル ISR の ATK2 cfg 定義
 ├── target_hw_counter.c / .h        HW カウンタ (GPT320/GPT321) ドライバ
@@ -260,11 +260,11 @@ target/ek_ra6m5_llvm/
   に追加判断．Phase 2 では未対応．
 - **TrustZone (Cortex-M33 Secure 側)** は未対応．Non-Secure 単一ビルド前提．
 - **R_BSP_IrqStatusClear** を ISR 側で呼ぶラッパは Phase 3 で整備．現状
-  `target_config.c` の SCI3 ISR は SSR フラグクリアのみで IELSR.IR は
+  `target_config.c` の SCI7 ISR は SSR フラグクリアのみで IELSR.IR は
   クリアしていない (FSP の動作と相性確認が必要)．
 
 ## 9. バージョン履歴
 
-- 2026-04: Phase 2-B 骨格作成．SCI3 / GPT320/321 ドライバ，リンカ
+- 2026-04: Phase 2-B 骨格作成．SCI7 / GPT320/321 ドライバ，リンカ
   スクリプト，cfg テンプレート一式を NUCLEO-H563ZI 版から派生．
   Smart Configurator 出力 (`ra_cfg/`, `ra_gen/`) は未取込．

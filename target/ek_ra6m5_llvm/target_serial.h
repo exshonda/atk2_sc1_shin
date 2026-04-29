@@ -19,13 +19,13 @@
  *      シリアルI/Oデバイス（SIO）ドライバ（EK_RA6M5用）
  *
  *  EK-RA6M5 の Arduino-UNO 互換ヘッダ J24 の D0 (Pin 0, RX) / D1 (Pin 1, TX)
- *  を使用．これは SCI3 (P303 = RXD3, P302 = TXD3) に接続される．
+ *  を使用．これは SCI7 (P614 = RXD7, P613 = TXD7) に接続される．
  *  ボーレート 115200 bps, 8N1, ISR 駆動 RX．
  *
  *    USB-UART 変換アダプタ (FTDI 等) を J24-D0/D1 に接続して使用．
  *    J-Link OB 経由の VCOM (= SCI9) は今回使用しない．
  *
- *  SCI3 を target_config.c で直接初期化しているため，ここでは
+ *  SCI7 を target_config.c で直接初期化しているため，ここでは
  *  sample1 が要求する INTNO_SIO / INTPRI_SIO のみを定義する．
  */
 
@@ -35,14 +35,14 @@
 #include "ek_ra6m5.h"
 
 /*
- *  SCI3 受信割込みのベクタ番号 / 割込み優先度
+ *  SCI7 受信割込みのベクタ番号 / 割込み優先度
  *
  *  ★★★ TODO[Phase 2-A 必須]: 暫定値 — Smart Configurator 出力受領後に
  *                              必ず実値に置き換えること ★★★
  *
  *  RA6M5 の NVIC スロット番号は Smart Configurator (vector_data.c) が
  *  決定する．Phase 2-A 完了後，target/ek_ra6m5_llvm/ra_gen/vector_data.c
- *  の `g_interrupt_event_link_select[]` 配列を開き，SCI3_RXI が割り当て
+ *  の `g_interrupt_event_link_select[]` 配列を開き，SCI7_RXI が割り当て
  *  られている配列インデックス N を確認．下記 `INTNO_SIO` を `N + 16`
  *  (= 例外番号) に修正．`target_serial.arxml` の `<VALUE>` も同値に
  *  合わせること．**INTNO 不一致のまま実機実行すると別ペリフェラルの

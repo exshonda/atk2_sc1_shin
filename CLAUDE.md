@@ -110,6 +110,6 @@ The application's static OS configuration (tasks, alarms, counters, ISRs, resour
 - **ターゲット依存部**: `target/ek_ra6m5_llvm/` (EK-RA6M5 ボード固有)
 - **ビルドディレクトリ**: `obj/obj_ek_ra6m5/` (Phase 3 で作成予定)
 - **FSP**: バージョン 6.4.0 (Renesas Smart Configurator sc_v2025-12)．`C:/Renesas/RA/sc_v2025-12_fsp_v6.4.0/eclipse/rascc.exe`．
-- **シリアル (ログ出力)**: **SCI3 経由 Arduino D0/D1**．EK-RA6M5 の J24 ヘッダ Pin 0 (RX = P303 = RXD3) / Pin 1 (TX = P302 = TXD3)．115200 bps, 8N1．外付け USB-Serial 変換アダプタを J24 に接続して使う想定．J-Link OB VCOM (SCI9) は使用しない．
+- **シリアル (ログ出力)**: **SCI7 経由 Arduino D0/D1**．EK-RA6M5 の J24 ヘッダ Pin 0 (RX = P614 = RXD7) / Pin 1 (TX = P613 = TXD7)．115200 bps, 8N1．外付け USB-Serial 変換アダプタを J24 に接続して使う想定．J-Link OB VCOM (SCI9) は使用しない．
 - **clone 後の必須作業**: `rascc --generate target/ek_ra6m5_llvm/fsp/configuration.xml` を実行すること．生成物 `ra/` `ra_cfg/` `ra_gen/` は `.gitignore` で除外．手順詳細は [`arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md`](arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md)．
 - **段階的実装計画**: `phase1.md`〜`phase6.md` 参照．現状は Phase 2-A (Smart Configurator baseline 取込) 待ち．
