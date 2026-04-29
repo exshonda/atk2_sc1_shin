@@ -103,33 +103,20 @@ R7FA6M5BH のメモリマップ:
 > `ra_gen/hal_data.{c,h}` のシンボル (`g_uart_log_ctrl`, `g_uart_log_cfg`,
 > `g_timer_freerun_ctrl` …) と target ソースの参照を一貫させる．
 
-`Generate Project Content` をクリック．
+設定が完了したら **`Generate Project Content` をクリック**して保存．これにより
+`target/ek_ra6m5_llvm/fsp/configuration.xml` が更新される．**ユーザの GUI
+作業はここまで**．以後は rasc/e² studio を閉じて Claude に「Phase 2-A §B
+完了．§C 以降を引き継いで」と依頼．`commit` と `rascc --generate` (= `ra/`
+`ra_cfg/` `ra_gen/` の再生成) は **Claude が自動実行** する．詳細は
+[`phase2.md`](../../phase2.md) §C を参照．
 
-### 3.3 commit (configuration.xml のみ)
-
-`Generate Project Content` 実行後，`target/ek_ra6m5_llvm/fsp/` 配下に
-configuration.xml + ra/ + ra_cfg/ + ra_gen/ + 各種 IDE/CMake 副生成物
-(CMakeLists.txt, Config.cmake, .secure_*, .theia/, *.lld, src/hal_entry.c
-等) が出力される．**configuration.xml 以外は全て `.gitignore` で除外
-されている**．
-
-```sh
-git status target/ek_ra6m5_llvm/fsp/
-# → configuration.xml のみが untracked として表示される
-git add target/ek_ra6m5_llvm/fsp/configuration.xml
-git commit -m "target/ek_ra6m5_llvm: configuration.xml 追加 (Smart Configurator baseline)"
-```
-
-> もし `configuration.xml` 以外の untracked ファイルが現れた場合は
-> `.gitignore` のパターンが古い可能性．**そのまま add せず**，差分を
-> 確認すること．
-
-### 3.4 後日のドライバ追加・構成変更
+### 3.3 後日のドライバ追加・構成変更
 
 configuration.xml がコミット済 + ローカルの `fsp/ra/` 等が rascc 生成済
 の状態であれば，rasc.exe / e² studio で **`target/ek_ra6m5_llvm/fsp/`
 プロジェクトを `Open Project` で開き直す** だけで Stacks/Pins 編集が
-できる．`Generate Project Content` で in-place 再生成．
+できる．`Generate Project Content` で in-place 再生成．以後の commit /
+`rascc --generate` も同様に Claude に引き継げる．
 
 外部ワークスペースに別プロジェクトを作って差分コピーする必要はない．
 

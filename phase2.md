@@ -64,18 +64,25 @@ main からの差分 commit (新しい順):
 
 ### 0-6. Phase 2 の最初に取るアクション
 
-1. **(ユーザ手作業必須・初回のみ)** Smart Configurator GUI で `configuration.xml`
-   を作成し `target/ek_ra6m5_llvm/fsp/configuration.xml` にコミット．
-   詳細は §B 参照．Renesas は CLI でのプロジェクト初期化を提供して
-   おらず，このステップだけは Claude が代行できない．
-2. **(以後 Claude 実行可)** `configuration.xml` がコミット済になったら，
-   Claude に「Phase 2-A §B 完了，§C 以降を引き継いで」と依頼．Claude は
-   Bash で `rascc.exe --generate ... target/ek_ra6m5_llvm/fsp/configuration.xml`
-   を実行し `fsp/ra/` `fsp/ra_cfg/` `fsp/ra_gen/` を生成 (gitignore 済) →
-   Read で `vector_data.c` から INTNO を抽出 → Edit で
-   `target_serial.{h,arxml}` `target_hw_counter.{h,arxml}` の暫定値を
-   実値に置換 → そのまま Phase 3 (`obj/obj_ek_ra6m5/Makefile` 作成 +
-   初回ビルド) に進む．
+1. **(ユーザ手作業必須・初回のみ)** Smart Configurator GUI (rasc.exe /
+   e² studio) で `target/ek_ra6m5_llvm/fsp/` を Project location にした
+   in-place 新規プロジェクトを作成し，Stacks/Pins を構成して
+   `Generate Project Content` で保存．`configuration.xml` がディスクに
+   書き出されたところで rasc/e² studio を閉じる．**ユーザの GUI 作業は
+   ここまで**．詳細は §B-1, §B-2．Renesas は CLI でのプロジェクト初期化
+   を提供しておらず，このステップだけは Claude が代行できない．
+2. **(以後 Claude 実行可)** ユーザは Claude に「Phase 2-A §B 完了．§C
+   以降を引き継いで」と依頼．Claude は Bash/Read/Edit で:
+   - §C-1〜C-3: `git status` 確認 → configuration.xml の内容確認 →
+     `git add` + commit
+   - §C-4: 必要なら `rascc.exe --generate` で `fsp/ra/` `fsp/ra_cfg/`
+     `fsp/ra_gen/` を再生成 (GUI で Generate Project Content 済みの場合は
+     既に生成されているのでスキップ可)
+   - §D: 生成物検証 (bsp_cfg.h, vector_data.c 存在確認)
+   - §E: `vector_data.c` から SCI7_RXI / GPT321 関連の INTNO を抽出
+   - §F: `target_serial.{h,arxml}`, `target_hw_counter.{h,arxml}` の
+     暫定値を実値に置換 + commit
+   - そのまま Phase 3 (`obj/obj_ek_ra6m5/Makefile` 作成 + 初回ビルド) へ
 
 ### 0-7. 制約・運用ルール
 
@@ -178,61 +185,77 @@ GUI を **どちらか好きな方** で起動する:
   を AF (SCI7) に設定．他のピン (LED P006/P004/P008, User SW P009 等) は
   既定のまま．
 
-#### B-3. Generate と commit
+設定が完了したら **`Generate Project Content` をクリック**して保存．これにより
+`target/ek_ra6m5_llvm/fsp/configuration.xml` が更新される．**ユーザの GUI
+作業はここまで**．git add / commit や `rascc --generate` (= `ra/`/`ra_cfg/`/
+`ra_gen/` の再生成) は **以後 Claude が引き継ぐ** ので，rasc/e² studio を
+閉じて Claude に「Phase 2-A §B 完了．§C 以降を引き継いで」と依頼する．
+ブリーフテンプレートは §H 参照．
 
-1. **Generate Project Content** をクリック．`target/ek_ra6m5_llvm/fsp/`
-   配下に `ra/`, `ra_cfg/`, `ra_gen/`, `configuration.xml`，および IDE/
-   CMake 用の副生成物 (`CMakeLists.txt`, `Config.cmake`, `cmake/`,
-   `.theia/`, `.secure_*`, `bsp_linker_info.h`, `*.lld`, `script/`,
-   `src/hal_entry.c`, `src/hal_warmstart.c`, `*.code-workspace` 等) が
-   出力される．
-2. `git status target/ek_ra6m5_llvm/fsp/` で **`configuration.xml` のみが
-   untracked** として現れることを確認．他は `.gitignore` で除外されている．
-   - もし副生成物が untracked として現れる場合は `.gitignore` のパターンに
-     抜けがある可能性．**追加で commit せず**，Claude に相談する．
-3. `git add target/ek_ra6m5_llvm/fsp/configuration.xml` してコミット．
-   推奨メッセージ:
-   ```
-   target/ek_ra6m5_llvm: configuration.xml 追加 (Smart Configurator baseline)
-
-   FSP 6.4.0 (sc_v2025-12) 用．Board=EK-RA6M5, R7FA6M5BH3CFC,
-   ICLK=200MHz, SCI7 (g_uart_log), GPT320 (g_timer_freerun),
-   GPT321 (g_timer_alarm), IOPORT (g_ioport), Flat Non-TrustZone．
-   ```
-4. ユーザは Claude に「Phase 2-A §B 完了．§C 以降を引き継いで」と依頼．
-   §I のブリーフテンプレートを使うと過不足ない引継ぎになる．
-
-#### B-4. 後日のドライバ追加・構成変更
+#### B-3. 後日のドライバ追加・構成変更
 
 `target/ek_ra6m5_llvm/fsp/configuration.xml` がコミット済み + ローカル
 で `target/ek_ra6m5_llvm/fsp/ra/` 等が rascc 生成済み (§C 完了済) の状態
 であれば，rasc.exe / e² studio で `target/ek_ra6m5_llvm/fsp/` プロジェクト
 を `Open Project` で開き直すだけで，Stacks/Pins 編集 → Generate Project
-Content で in-place 再生成できる．
+Content で in-place 再生成できる．以後の commit / `rascc --generate` も
+同様に Claude に引き継げる．
 
 外部ワークスペースに別プロジェクトを作って差分コピーする必要は無い．
 
-### C. `rascc --generate` で `ra/` `ra_cfg/` `ra_gen/` を生成 〔Claude 実行可〕
+### C. configuration.xml の commit + `rascc --generate` 実行 〔Claude 実行可〕
 
-> **§B-3 との関係**: §B-3 の "Generate Project Content" (GUI ボタン) と
-> 本節 `rascc --generate` (CLI) は **機能的に等価**．入力は同じ
-> `configuration.xml`，出力は同じ `fsp/{ra,ra_cfg,ra_gen,...IDE 副生成物}`．
-> Renesas Configurator エンジンを GUI から呼ぶか CLI から呼ぶかの違い．
->
-> したがって **§B-3 を完遂したセッション内では §C は不要** (生成物は既に
-> ある)．§C を実行するのは下記のいずれかの状況:
->
-> 1. **別 clone / 別 PC**: configuration.xml はコミット済だが `fsp/ra/` 等が
->    無い (clone 直後の通常状態)．
-> 2. **configuration.xml が更新された後**: `git pull` で本リポジトリを
->    更新したら，ローカルの `fsp/ra/` 等が古い可能性．再生成する．
-> 3. **CI / ヘッドレス環境**: GUI 起動不可なので CLI 一択．
-> 4. **Claude が configuration.xml を編集して試行**: GUI を持たないので CLI．
->
-> 通常開発フローでは「ユーザが §B で baseline を作って commit → 別 clone
-> またはセッション再開時に §C で再生成」というサイクル．
+§B 完了通知を受けたら，Claude は下記を Bash/Read/Edit で順次実行する．
 
-`configuration.xml` がコミットされた後，Claude (または開発者) が Bash 経由で実行:
+#### C-1. `target/ek_ra6m5_llvm/fsp/` の状態確認
+
+```sh
+git status target/ek_ra6m5_llvm/fsp/
+```
+
+期待状態: `configuration.xml` のみが **untracked** (or modified) で，
+他のファイル (CMakeLists.txt, ra/, ra_cfg/, ra_gen/, .secure_*, ...) は
+`.gitignore` で除外されているため何も表示されない．
+
+**もし副生成物が untracked として現れる場合は `.gitignore` のパターン
+不足の可能性**．Claude はそのまま add せず，パターンを追加する commit
+を別途作ってからユーザに確認する．
+
+#### C-2. configuration.xml の内容確認
+
+`target/ek_ra6m5_llvm/fsp/configuration.xml` を Read / Grep で開き，
+下記が期待値であることを確認:
+
+| 項目 | 期待値 |
+|---|---|
+| `<option key="#Board#" value="..."/>` | `board.ra6m5ek` |
+| `<option key="#TargetName#" value="..."/>` | `R7FA6M5BH3CFC` |
+| `<option key="#FSPVersion#" value="..."/>` | `6.4.0` |
+| `<option key="#SELECTED_TOOLCHAIN#" value="..."/>` | `com.renesas.cdt.managedbuild.llvm.arm.` |
+| `<configSetting altId="p613.sci7.txd" .../>` | あり (Arduino D1 / TX) |
+| `<configSetting altId="p614.sci7.rxd" .../>` | あり (Arduino D0 / RX) |
+| `<configSetting altId="sci7.mode.asynchronous.free" .../>` | あり |
+
+期待値と異なる場合はユーザに確認．
+
+#### C-3. configuration.xml の commit
+
+```sh
+git add target/ek_ra6m5_llvm/fsp/configuration.xml
+git commit -m "target/ek_ra6m5_llvm: configuration.xml 追加 (Smart Configurator baseline)
+
+FSP 6.4.0 (sc_v2025-12) 用．Board=EK-RA6M5, R7FA6M5BH3CFC,
+ICLK=200MHz, SCI7 (g_uart_log), GPT320 (g_timer_freerun),
+GPT321 (g_timer_alarm), IOPORT (g_ioport), Flat Non-TrustZone．
+"
+```
+
+#### C-4. `rascc --generate` 実行
+
+ユーザが GUI で "Generate Project Content" をクリックしていれば
+`fsp/ra/` `fsp/ra_cfg/` `fsp/ra_gen/` は既に存在する．その場合は §C-4 を
+スキップして §D (検証) に進んで良い．configuration.xml だけ保存され
+生成物が無い場合や，再生成が必要な場合に下記コマンドを Bash で実行:
 
 ```sh
 "C:/Renesas/RA/sc_v2025-12_fsp_v6.4.0/eclipse/rascc.exe" \
@@ -242,14 +265,20 @@ Content で in-place 再生成できる．
     target/ek_ra6m5_llvm/fsp/configuration.xml
 ```
 
-実行後 `target/ek_ra6m5_llvm/fsp/` 配下に `ra/` `ra_cfg/` `ra_gen/` が新規作成
-(あるいは更新)．これらは `.gitignore` で除外されているため commit されない．
+実行後 `target/ek_ra6m5_llvm/fsp/` 配下に `ra/` `ra_cfg/` `ra_gen/` が
+新規作成 (あるいは更新)．これらは `.gitignore` で除外されているため
+commit されない．
 
 成功条件:
 - exit code = 0
 - `target/ek_ra6m5_llvm/fsp/ra/fsp/inc/fsp_version.h` が生成される
 - `target/ek_ra6m5_llvm/fsp/ra_cfg/fsp_cfg/bsp/bsp_cfg.h` が生成される
 - `target/ek_ra6m5_llvm/fsp/ra_gen/vector_data.c` が生成される
+
+> **GUI Generate と CLI rascc --generate の関係**: 機能的に等価．入力は
+> 同じ `configuration.xml`，出力は同じ `fsp/{ra,ra_cfg,ra_gen,IDE副生成物}`．
+> Renesas Configurator エンジンを GUI から呼ぶか CLI から呼ぶかの違い．
+> 別 clone・別 PC・configuration.xml 更新後・CI 環境では CLI 一択．
 
 詳細は [`arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md`](arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md) を参照．
 
@@ -295,15 +324,20 @@ INTNO を導出:
 | Smart Configurator が `BSP_MCU_GROUP_RA6M5` を定義しない | Board 選択漏れ | プロジェクト再生成．`bsp_cfg.h` を grep |
 | `BSP_TZ_NONSECURE_BUILD` が定義されている | TrustZone を選んだ | **Flat (Non-TrustZone)** で再生成 |
 
-### H. 次セッションで Claude に渡すブリーフ (テンプレート)
+### H. ユーザが §B 完了時に Claude に渡すブリーフ (テンプレート)
+
+ユーザの GUI 作業 (§B-1, §B-2) が終わったら **Claude に通知** する．
+コミットは Claude が §C で行うので「commit ___」のような情報を渡す
+必要は無い．下記をそのまま投げれば Claude が判断して進める．
 
 ```
-Phase 2-A 完了．configuration.xml は commit ___ で追加済み．
-ローカルで `rascc --generate target/ek_ra6m5_llvm/fsp/configuration.xml` 実行済み．
-target/ek_ra6m5_llvm/fsp/ra_gen/vector_data.c から読取った INTNO:
-- SCI7_RXI       : N=___ → INTNO=___
-- GPT321_OVF 相当: N=___ → INTNO=___
-これで Phase 2-B 残作業 (INTNO 反映 + vector_data.c 取扱確定) と Phase 3 を進めてほしい．
+Phase 2-A §B (Smart Configurator GUI) 完了．
+target/ek_ra6m5_llvm/fsp/configuration.xml がローカルに作成済 (未 commit)．
+構成: Board=EK-RA6M5, Device=R7FA6M5BH3CFC, FSP 6.4.0, LLVM,
+      Flat Non-TrustZone, SCI7 (g_uart_log) + GPT320 (g_timer_freerun)
+      + GPT321 (g_timer_alarm) + IOPORT (g_ioport)．
+§C 以降 (commit / rascc / 検証 / INTNO 抽出 / target ソース反映) と
+Phase 3 (obj/obj_ek_ra6m5/Makefile 作成 + 初回ビルド) を引き継いで．
 ```
 
 ---
