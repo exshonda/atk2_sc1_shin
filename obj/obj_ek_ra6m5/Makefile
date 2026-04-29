@@ -342,6 +342,20 @@ Os_Lcfg.timestamp: $(APPL_CFG_INPUT) $(START_OBJS) $(OBJDIR)/cfg1_out.o $(END_OB
 	$(OBJCOPY) -O srec -S $(CFG1_OUT) cfg1_out.srec
 	$(CFG) --pass 2 --kernel $(CFG_KERNEL) $(INCLUDES) \
 				-T $(TARGETDIR)/target.tf $(CFG_TABS) $(filter %.arxml,$^)
+	@# Patch kernel_vector_table[] entries: ARM ELF R_ARM_ABS32 relocation
+	@# against a Thumb function symbol automatically sets LSB=1 in the
+	@# resolved value (linker behavior for both ld.lld and ld.bfd)．
+	@# arch/arm_m_gcc/common/prc.tf に書かれている `(uint32)func + 1`
+	@# は Thumb bit を立てる意図だが，ATfE clang + lld の組合せでは
+	@# linker が既に `+1` を自動付与するため二重加算となり 0x_addr + 2
+	@# (= LSB クリア) となって Cortex-M が ARM モード実行を試み起動時
+	@# HardFault．`+ 1` を削除すれば addend=0 + 自動 +1 で正しい LSB=1．
+	@# `| 1U` は static initializer で「コンパイル時定数」と認識されない
+	@# (clang error: initializer element is not a compile-time constant)
+	@# ため使えない．`+ 1` 削除のみ可能．
+	@# arch/arm_m_gcc/common/prc.tf を変更しない方針 (CLAUDE.md 開発項目)
+	@# のための target 層側でのワークアラウンド．
+	sed -i -E 's/(\(uint32\)[a-zA-Z_][a-zA-Z0-9_]*) \+ 1,/\1,/g' Os_Lcfg.c
 	if ! cmp Os_Cfg.h Os_Cfg_tmp.h >/dev/null 2>&1 ; then \
 		mv Os_Cfg_tmp.h Os_Cfg.h ;\
 	else \
