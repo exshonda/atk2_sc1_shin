@@ -1,13 +1,16 @@
-# TOPPERS/ATK2 NUCLEO-H563ZI 移植版
+# TOPPERS/ATK2 ARM Cortex-M33 移植版 (NUCLEO-H563ZI / EK-RA6M5)
 
-TOPPERS/ATK2 (AUTOSAR Kernel Version 2, SC1) を STMicroelectronics
-**NUCLEO-H563ZI** ボード (ARM Cortex-M33) 上で動作させる実装一式．
+TOPPERS/ATK2 (AUTOSAR Kernel Version 2, SC1) を **ARM Cortex-M33** 系
+評価ボード上で動作させる実装一式．現在 2 つのボードに対応:
 
-オリジナル ATK2 SC1 (Nios2 用) に対し，ARM Cortex-M / STM32H5xx 用の
-プロセッサ・チップ・ターゲット依存部 (`arch/arm_m_gcc/common`,
-`arch/arm_m_gcc/stm32h5xx_stm32cube`, `target/nucleo_h563zi_gcc`) を
-新規追加している．移植にあたっては TOPPERS/ASP3 の同ボード対応版を
-参考にした．
+| 略称 | ボード | MCU | ツールチェイン | チップ依存部 / ターゲット |
+|---|---|---|---|---|
+| `nucleo_h563zi_gcc` | STMicroelectronics NUCLEO-H563ZI | STM32H563ZI (Cortex-M33 + FPU) | arm-none-eabi-gcc 13/14 | `arch/arm_m_gcc/stm32h5xx_stm32cube/` (STM32Cube HAL 同梱) / `target/nucleo_h563zi_gcc/` |
+| `ek_ra6m5_llvm` | Renesas EK-RA6M5 | R7FA6M5BH (Cortex-M33 + FPU) | ATfE clang 21.1.1 | `arch/arm_m_llvm/ra_fsp/` (Renesas FSP 6.4.0 ベース; **FSP 非同梱**) / `target/ek_ra6m5_llvm/` |
+
+オリジナル ATK2 SC1 (Nios2 用) に対し，ARM Cortex-M 共通プロセッサ依存部
+(`arch/arm_m_gcc/common`) と上記の各チップ・ターゲット依存部を新規追加
+している．移植にあたっては TOPPERS/ASP3 の Cortex-M ポートを参考にした．
 
 ## ディレクトリ構成
 
@@ -15,19 +18,24 @@ TOPPERS/ATK2 (AUTOSAR Kernel Version 2, SC1) を STMicroelectronics
 atk2_sc1_shin/
 ├── arch/
 │   ├── arm_m_gcc/
-│   │   ├── common/                 ARM Cortex-M 共通プロセッサ依存部
+│   │   ├── common/                 ARM Cortex-M 共通プロセッサ依存部 (両ターゲット共有)
 │   │   └── stm32h5xx_stm32cube/    STM32H5xx チップ依存部 (HAL 同梱)
-│   ├── gcc/                        GCC 共通
+│   ├── arm_m_llvm/
+│   │   ├── common/                 ARM LLVM (ATfE) 用 Makefile.prc のみ
+│   │   └── ra_fsp/                 Renesas RA + FSP チップ依存部 (FSP 非同梱)
+│   ├── gcc/ / llvm/                AUTOSAR Compiler 抽象 (clang は gcc を再利用)
 │   └── logtrace/                   トレースログ
 ├── target/
-│   └── nucleo_h563zi_gcc/          NUCLEO-H563ZI ターゲット依存部
+│   ├── nucleo_h563zi_gcc/          NUCLEO-H563ZI ターゲット依存部 + STM32CubeIDE プロジェクト
+│   └── ek_ra6m5_llvm/              EK-RA6M5 ターゲット依存部 + e² studio デバッグ専用プロジェクト
 ├── kernel/                         OS カーネル (オリジナル)
 ├── sample/                         サンプル
 ├── sysmod/                         システムモジュール
 ├── library/                        ライブラリ
 ├── include/                        ATK2 公開ヘッダ
 ├── obj/
-│   └── obj_nucleo_h563zi/          NUCLEO-H563ZI 用ビルドディレクトリ
+│   ├── obj_nucleo_h563zi/          NUCLEO-H563ZI 用ビルドディレクトリ
+│   └── obj_ek_ra6m5/               EK-RA6M5 用ビルドディレクトリ
 ├── cfg/
 │   └── cfg_py/                     ATK2 cfg ツール Python 移植版 (デフォルト)
 ├── utils/                          ユーティリティスクリプト (Python)
@@ -39,9 +47,11 @@ atk2_sc1_shin/
 
 各層の詳細は以下の README を参照:
 
-- [`arch/arm_m_gcc/common/README.md`](arch/arm_m_gcc/common/README.md) — ARM-M 共通依存部
-- [`arch/arm_m_gcc/stm32h5xx_stm32cube/README.md`](arch/arm_m_gcc/stm32h5xx_stm32cube/README.md) — STM32H5xx チップ依存部
-- [`target/nucleo_h563zi_gcc/README.md`](target/nucleo_h563zi_gcc/README.md) — NUCLEO-H563ZI ボード依存部 (ビルド方法)
+| 層 | NUCLEO-H563ZI | EK-RA6M5 |
+|---|---|---|
+| プロセッサ (CPU 共通) | [`arch/arm_m_gcc/common/README.md`](arch/arm_m_gcc/common/README.md) | (同左; ソースを vpath で再利用) |
+| チップ | [`arch/arm_m_gcc/stm32h5xx_stm32cube/README.md`](arch/arm_m_gcc/stm32h5xx_stm32cube/README.md) | [`arch/arm_m_llvm/ra_fsp/README.md`](arch/arm_m_llvm/ra_fsp/README.md) |
+| ターゲット (ボード) | [`target/nucleo_h563zi_gcc/README.md`](target/nucleo_h563zi_gcc/README.md) | [`target/ek_ra6m5_llvm/README.md`](target/ek_ra6m5_llvm/README.md) |
 
 > **注**: 本リポジトリには **Nios2 ターゲット (`arch/nios2_gcc`,
 > `target/nios2_dev_gcc`, `obj/obj_nios2`) は含まれていない**．Nios2 用
@@ -50,17 +60,32 @@ atk2_sc1_shin/
 
 ## セットアップ
 
-### 1. クロスコンパイラ (必須)
+### 1. クロスコンパイラ (必須; ターゲットごとに別)
 
-Arm Cortex-M 用 GCC ツールチェーン．以下のいずれか:
+ターゲットごとに別のツールチェインを使う:
+
+#### NUCLEO-H563ZI 用: arm-none-eabi-gcc
 
 | 入手元 | 動作確認バージョン |
 |---|---|
 | Arm GNU Toolchain (公式) | `arm-none-eabi-gcc` 13.3.1, binutils 2.42 |
-| STM32CubeIDE 2.1.1 同梱 | `arm-none-eabi-gcc` 14.3.1, binutils 14.3.1 |
+| STM32CubeIDE / STM32CubeCLT 同梱 | `arm-none-eabi-gcc` 14.3.1, binutils 14.3.1 |
 
 `arm-none-eabi-gcc` を `PATH` に通すか，環境変数 `GCC_TARGET_PREFIX` で
 場所を指定する．
+
+#### EK-RA6M5 用: ARM LLVM (ATfE) 21.1.1
+
+Renesas e² studio v2025-12 同梱の **Arm Toolchain for Embedded (ATfE)
+21.1.1** を使用．`clang --target=arm-none-eabi` で ARM ELF を生成．
+標準パス:
+
+```
+C:/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/toolchains/llvm_arm/ATfE-21.1.1-Windows-x86_64/bin/
+```
+
+このディレクトリを `PATH` に通せば `clang`, `llvm-ar`, `llvm-nm`,
+`llvm-objcopy`, `llvm-objdump` がそのまま見える．
 
 ### 2. Python ランタイム (必須)
 
@@ -117,23 +142,60 @@ atk2_sc1_shin/
 
 その後 `make USE_PY_CFG=0` でバイナリ版に切替できる (詳細は次節参照)．
 
-### 4. STM32CubeIDE (任意)
+### 4. IDE (任意; ターゲットごと)
 
-GUI ベースのデバッグ環境を使う場合のみ．動作確認済みバージョンは
-**STM32CubeIDE 2.1.1**．インストール手順とプロジェクト取込み方法は
-[`target/nucleo_h563zi_gcc/README.md`](target/nucleo_h563zi_gcc/README.md)
+#### NUCLEO-H563ZI: STM32CubeIDE 2.1.1
+
+GUI ベースのビルド・デバッグ環境．インストール手順とプロジェクト取込み
+方法は [`target/nucleo_h563zi_gcc/README.md`](target/nucleo_h563zi_gcc/README.md)
 を参照．
+
+#### EK-RA6M5: e² studio v2025-12 (デバッグ専用)
+
+本ターゲットでは **e² studio はデバッグのみに使用**．ビルドはコマンド
+ラインの make で行い，e² studio は ELF をロードして J-Link 経由で実機
+デバッグするだけ．取込み手順は
+[`target/ek_ra6m5_llvm/README.md`](target/ek_ra6m5_llvm/README.md) §9
+参照．
+
+### 5. Renesas Smart Configurator + FSP (EK-RA6M5 のみ)
+
+EK-RA6M5 ターゲットは Renesas FSP 6.4.0 を使うが，**FSP ソースは本
+リポジトリに同梱しない**．clone 後に 1 回だけ `rascc.exe --generate` で
+`target/ek_ra6m5_llvm/fsp/{ra,ra_cfg,ra_gen}/` を生成する必要がある．
+
+| ツール | 動作確認バージョン | 備考 |
+|---|---|---|
+| Smart Configurator (standalone) | `sc_v2025-12_fsp_v6.4.0` | `C:/Renesas/RA/sc_v2025-12_fsp_v6.4.0/eclipse/rascc.exe` |
+| e² studio 同梱 Smart Configurator | v2025-12 (FSP 6.4.0) | rasc.exe / rascc.exe いずれも可 |
+
+セットアップ手順の詳細:
+[`arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md`](arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md)．
 
 ## ビルド・実行
 
-### Make (msys2 + arm-none-eabi-gcc)
+### NUCLEO-H563ZI (Make + arm-none-eabi-gcc)
 
 ```sh
 cd obj/obj_nucleo_h563zi
 make -j4
 ```
 
-`atk2-sc1` (ELF) / `atk2-sc1.srec` / `atk2-sc1.dump` が生成される．
+### EK-RA6M5 (Make + ATfE clang)
+
+ATfE bin を `PATH` に通してから:
+
+```sh
+export PATH="/c/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/toolchains/llvm_arm/ATfE-21.1.1-Windows-x86_64/bin:$PATH"
+cd obj/obj_ek_ra6m5
+make -j4
+```
+
+(初回は事前に `rascc --generate target/ek_ra6m5_llvm/fsp/configuration.xml`
+を 1 回実行する必要がある．§5 参照．)
+
+いずれのターゲットでも `atk2-sc1` (ELF) / `atk2-sc1.srec` /
+`atk2-sc1.dump` がビルドディレクトリに生成される．
 
 ### cfg ツールの選択 (`USE_PY_CFG`)
 
@@ -170,22 +232,28 @@ Python 実行可能ファイル名は `PYTHON` 変数で上書き可能 (例:
   pytest -v
   ```
 
-### STM32CubeIDE
+### IDE 経由のビルド・デバッグ
 
-[`target/nucleo_h563zi_gcc/README.md`](target/nucleo_h563zi_gcc/README.md)
-を参照．動作確認済みバージョンは **STM32CubeIDE 2.1.1**．
+詳細はターゲットごとの README:
+
+- [`target/nucleo_h563zi_gcc/README.md`](target/nucleo_h563zi_gcc/README.md) (STM32CubeIDE 2.1.1)
+- [`target/ek_ra6m5_llvm/README.md`](target/ek_ra6m5_llvm/README.md) (e² studio v2025-12; デバッグ専用)
 
 ### 開発環境動作確認
 
-| ツール | バージョン | 入手元 |
+| ツール | バージョン | 用途 / 入手元 |
 |---|---|---|
-| arm-none-eabi-gcc | 13.3.1 / 14.3.1 | Arm GNU Toolchain / STM32CubeIDE |
+| arm-none-eabi-gcc | 13.3.1 / 14.3.1 | NUCLEO-H563ZI ビルド (Arm GNU Toolchain / STM32CubeIDE) |
 | arm-none-eabi-binutils | 2.42.0 / 14.3.1 | 同上 |
-| GNU Make | 4.4.1 | msys2 |
-| Python | 3.7 以降 (3.13 で動作確認) | <https://www.python.org/> |
+| **ARM LLVM (ATfE)** | **21.1.1** | EK-RA6M5 ビルド (Renesas e² studio v2025-12 同梱) |
+| GNU Make | 4.4 (msys2 / e² studio 同梱) | 両ターゲット |
+| Python | 3.7 以降 (3.13 / 3.14 で動作確認) | cfg_py 実行用．<https://www.python.org/> |
 | ATK2 cfg (Python 版) | 同梱 `cfg/cfg_py/cfg.py` | 本リポジトリ |
 | ATK2 cfg (C++ 版, 任意) | cfg-mingw-static 1.9.6 | <https://www.toppers.jp/download.cgi/cfg-mingw-static-1_9_6.zip> |
-| STM32CubeIDE | 2.1.1 | <https://www.st.com/en/development-tools/stm32cubeide.html> |
+| **Renesas FSP** | **6.4.0** (sc_v2025-12) | EK-RA6M5 のみ．`rascc.exe --generate` 用 |
+| STM32CubeIDE | 2.1.1 | NUCLEO-H563ZI 用 IDE．<https://www.st.com/en/development-tools/stm32cubeide.html> |
+| e² studio | v2025-12 (FSP 6.4.0) | EK-RA6M5 デバッグ用．Renesas 公式 |
+| **SEGGER J-Link** | V9.20 以降 | EK-RA6M5 フラッシュ書込み |
 | PyYAML (任意) | 6.x 系 | `pip install pyyaml` |
 | pytest (任意) | 9.x 系 | `pip install pytest` |
 
@@ -210,16 +278,26 @@ Python 実行可能ファイル名は `PYTHON` 変数で上書き可能 (例:
 
 | 対象 | 内容 |
 |---|---|
-| `arch/arm_m_gcc/common/` | ARM Cortex-M 共通プロセッサ依存部一式 (start.S, prc_support.S, prc_config.c/h, arm_m.h, Makefile.prc, FPU 制御等)． |
+| `arch/arm_m_gcc/common/` | ARM Cortex-M 共通プロセッサ依存部一式 (start.S, prc_support.S, prc_config.c/h, arm_m.h, Makefile.prc, FPU 制御等)．両ターゲット共有． |
 | `arch/arm_m_gcc/stm32h5xx_stm32cube/` | STM32H5xx チップ依存部 (HAL Driver 同梱, Makefile.chip)． |
-| `target/nucleo_h563zi_gcc/` | NUCLEO-H563ZI ボード依存部 (リンカスクリプト, ターゲット設定, シリアル/HW カウンタドライバ, STM32CubeIDE プロジェクト)． |
-| `obj/obj_nucleo_h563zi/` | NUCLEO-H563ZI 用ビルドディレクトリ． |
-| `cfg/cfg_py/` | ATK2 cfg ツールの Python 完全移植版 (pass1/2/3 + .tf テンプレートエンジン + ARXML 木 + macro_processor binding)．`USE_PY_CFG=1` (デフォルト) で本実装が選択される． |
+| `arch/arm_m_llvm/common/` | ARM LLVM (ATfE) 用 Makefile.prc．ソース本体は `arch/arm_m_gcc/common/` を vpath で参照． |
+| `arch/arm_m_llvm/ra_fsp/` | Renesas RA + FSP 6.4.0 用チップ依存部 (Cortex-M33 + 96-slot ICU)．**FSP は同梱せず**，clone 後 `rascc --generate` で生成． |
+| `arch/llvm/` | AUTOSAR Compiler 抽象 (clang 用ブリッジ)．`arch/gcc/` を再利用． |
+| `target/nucleo_h563zi_gcc/` | NUCLEO-H563ZI ボード依存部 (リンカスクリプト, USART3, TIM2/TIM5 HW カウンタ, STM32CubeIDE プロジェクト)． |
+| `target/ek_ra6m5_llvm/` | EK-RA6M5 ボード依存部 (リンカスクリプト, SCI7, GPT320/GPT321 HW カウンタ, e² studio デバッグ専用プロジェクト, FSP `configuration.xml`)． |
+| `obj/obj_nucleo_h563zi/`, `obj/obj_ek_ra6m5/` | 各ターゲットのビルドディレクトリ． |
+| `cfg/cfg_py/` | ATK2 cfg ツールの Python 完全移植版 (pass1/2/3 + .tf テンプレートエンジン + ARXML 木 + macro_processor binding)．`USE_PY_CFG=1` (デフォルト) で本実装が選択される．EK-RA6M5 用回帰テスト (`tests/test_integration_ek_ra6m5.py`) も整備． |
 
 ## ライセンス
 
 各ソースファイル先頭の TOPPERS ライセンスに従う．本リポジトリの追加分も
 同ライセンスを継承する．
+
+EK-RA6M5 ターゲットでは `rascc --generate` で生成される **Renesas FSP**
+ソース (`target/ek_ra6m5_llvm/fsp/ra/fsp/`) は **BSD 3-Clause License**
+(`SPDX-License-Identifier: BSD-3-Clause`)．Renesas Electronics
+Corporation 著作権表示を保つこと．ただし FSP ソースは本リポジトリに
+**同梱せず**，clone 後にユーザがローカル生成する設計．
 
 AUTOSAR (AUTomotive Open System ARchitecture) 仕様に基づくため，AUTOSAR
 の知的財産権許諾は別途 AUTOSAR パートナーシップが必要となる場合がある．
@@ -230,4 +308,6 @@ AUTOSAR (AUTomotive Open System ARchitecture) 仕様に基づくため，AUTOSAR
 - TOPPERS/ASP3 (移植参考): <https://www.toppers.jp/asp3-kernel.html>
 - TOPPERS cfg ツール ダウンロード: <https://www.toppers.jp/cfg.html>
 - NUCLEO-H563ZI: <https://www.st.com/ja/evaluation-tools/nucleo-h563zi.html>
+- EK-RA6M5: <https://www.renesas.com/ja/products/microcontrollers-microprocessors/ra-cortex-m-mcus/ek-ra6m5-evaluation-kit-ra6m5-mcu-group>
 - STM32H5xx HAL ドライバ (移植元): STMicroelectronics STM32CubeH5
+- Renesas FSP: <https://github.com/renesas/fsp>

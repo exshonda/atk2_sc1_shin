@@ -4,16 +4,10 @@ TOPPERS/ATK2 (SC1) の **Renesas EK-RA6M5 Evaluation Kit** ボード向け
 ターゲット依存部．
 
 ターゲット略称: `ek_ra6m5_llvm`
-ボード製品ページ: <https://www.renesas.com/jp/ja/products/microcontrollers-microprocessors/ra-cortex-m-mcus/ek-ra6m5-evaluation-kit-ra6m5-mcu-group>
+ボード製品ページ: <https://www.renesas.com/ja/products/microcontrollers-microprocessors/ra-cortex-m-mcus/ek-ra6m5-evaluation-kit-ra6m5-mcu-group>
 
-> **ステータス: Phase 2-B 骨格**．Phase 2-A (Smart Configurator による
-> baseline 生成) は **GUI 必須のためユーザ作業** として残しており，
-> `fsp/configuration.xml` は本層に未配置．Phase 2-A で
-> `target/ek_ra6m5_llvm/fsp/configuration.xml` をコミットした後，clone
-> 後ユーザが `rascc --generate` を実行して `fsp/ra/` `fsp/ra_cfg/`
-> `fsp/ra_gen/` をローカル生成する．Phase 3 (`obj/obj_ek_ra6m5/Makefile`)
-> と組み合わせてビルド可能になる．現状ファイル中の `TODO[Phase 2-A]`
-> コメント部は Smart Configurator 出力に依存する暫定値．
+> **ステータス: Phase 4 完了 (実機動作確認済)**．Phase 5 で cfg_py 回帰
+> テスト整備済 ([`cfg/cfg_py/tests/test_integration_ek_ra6m5.py`](../../cfg/cfg_py/tests/test_integration_ek_ra6m5.py))．
 
 ## 1. 構成
 
@@ -22,7 +16,7 @@ TOPPERS/ATK2 (SC1) の **Renesas EK-RA6M5 Evaluation Kit** ボード向け
 | 層 | パス | 役割 |
 |---|---|---|
 | **ターゲット (本層)** | `target/ek_ra6m5_llvm/` | EK-RA6M5 ボード固有 |
-| チップ依存部 | `arch/arm_m_llvm/ra_fsp/` | RA ファミリ汎用 + Renesas FSP 6.4.0 |
+| チップ依存部 | `arch/arm_m_llvm/ra_fsp/` | Cortex-M33 + 96-slot ICU + Renesas FSP 6.4.0 |
 | プロセッサ依存部 (LLVM 用 Makefile) | `arch/arm_m_llvm/common/` | ARM LLVM (ATfE) 用ビルド設定 |
 | プロセッサ依存部 (ソース) | `arch/arm_m_gcc/common/` | start.S, prc_config.{c,h}, prc_support.S 等．LLVM ビルドからは vpath で参照 (untouched) |
 | AUTOSAR Compiler 抽象 (LLVM ブリッジ) | `arch/llvm/` | Compiler.h, Compiler_Cfg.h．`arch/gcc/` を取込 (clang は GCC 互換属性を受け入れる) |
@@ -39,11 +33,26 @@ gitignore)** という明確な境界がある．
 | `target/ek_ra6m5_llvm/fsp/configuration.xml` | ✓ | | Smart Configurator のソース (真値)．**fsp/ 配下で唯一の committed**．ユーザが GUI で編集→上書き保存． |
 | `target/ek_ra6m5_llvm/fsp/ra/`, `ra_cfg/`, `ra_gen/` | | ✓ | rascc --generate が出力．configuration.xml から完全再生成可能なので commit 不要． |
 | `target/ek_ra6m5_llvm/fsp/{CMakeLists.txt, Config.cmake, cmake/, *.lld, script/, src/, .secure_*, .theia/, *.code-workspace, ...}` | | ✓ | rasc.exe in-place 生成プロジェクトの IDE/CMake/LLD 副生成物．ATK2 ビルドは使わない． |
+| `target/ek_ra6m5_llvm/e2studio/sample_debug/` | ✓ | | デバッグ専用 e² studio プロジェクト (`.project` + `*.launch`)．`.metadata/`, `.settings/` は gitignore． |
 
-つまり `git status target/ek_ra6m5_llvm/fsp/` は **`configuration.xml` 以外
+`git status target/ek_ra6m5_llvm/fsp/` は **`configuration.xml` 以外
 何も表示されない** のが期待状態．
 
-## 2. メモリマップ
+## 2. 開発環境と動作確認バージョン
+
+| ツール | 動作確認バージョン | 備考 |
+|---|---|---|
+| **ARM LLVM (Arm Toolchain for Embedded; ATfE)** | **21.1.1** | Renesas e² studio v2025-12 同梱．`clang --target=arm-none-eabi` |
+| llvm-ar / llvm-nm / llvm-objcopy / llvm-objdump | ATfE 21.1.1 同梱 | ATfE bin/ ディレクトリ内 |
+| GNU Make | 4.4 (msys2 / e² studio 同梱) | e² studio 同梱版でも可 |
+| **Renesas FSP** | **6.4.0** (Smart Configurator sc_v2025-12) | `configuration.xml` 編集に必須 |
+| **rascc.exe** | FSP 6.4.0 同梱 | `<sc_install>/eclipse/rascc.exe`．`fsp/ra/` `ra_cfg/` `ra_gen/` の生成に使用 |
+| ATK2 cfg (Python 版) | 同梱 `cfg/cfg_py/cfg.py` (デフォルト) | Python 3.7+ |
+| **e² studio** (デバッグ用) | **v2025-12 (FSP 6.4.0)** | デバッグ専用．ビルドには使わない |
+| **J-Link Software** | **V9.20** 以降 | `JLink.exe` フラッシュ書込 + `JLinkGDBServer` (e² studio 経由) |
+| ホスト OS | Windows 11 | msys2 bash (`make`) + e² studio (デバッグ) |
+
+## 3. メモリマップ
 
 R7FA6M5BH のメモリマップ:
 
@@ -51,107 +60,38 @@ R7FA6M5BH のメモリマップ:
 |---|---|---|---|
 | 内蔵 Flash | `0x00000000` 〜 `0x001FFFFF` | 2 MB | `.vectors` / `.text` / `.rodata` / `.data` (LMA) |
 | 内蔵 SRAM | `0x20000000` 〜 `0x2007FFFF` | 512 KB | `.data` (VMA) / `.bss` / スタック |
-| Option Setting Memory | `0x0100A100` 〜 | 256 B | OFS0/OFS1/OSIS (Phase 3 で扱う) |
+| Option Setting Memory | `0x0100A100` 〜 | 256 B | OFS0 / OFS1 / OSIS (リンカスクリプトで配置) |
 | I/O 領域 | `0x40000000` 〜 | 256 MB | ペリフェラル |
 
 リンカスクリプト: [`r7fa6m5bh.ld`](r7fa6m5bh.ld)．SRAM 末尾 (`_estack`)
-を初期 MSP として使用．
+を初期 MSP として使用．Option Setting Memory は `bsp_linker.c`
+(FSP 提供) を `.option_setting_*` セクションへ配置．
 
-## 3. Smart Configurator による baseline 生成 (Phase 2-A §B 手順)
+## 4. システムクロック
 
-本層は Smart Configurator が生成する `fsp/configuration.xml` を真値として
-コミットし，clone 後ユーザが `rascc --generate` で `fsp/ra/`, `fsp/ra_cfg/`,
-`fsp/ra_gen/` をローカル生成する設計．以下は configuration.xml の **初回**
-作成手順 (生涯一度)．**in-place 方式** = 最初から
-`target/ek_ra6m5_llvm/fsp/` をプロジェクトディレクトリに指定する．コピー
-作業不要．以後の Stack 追加等の変更は同じ場所を rasc で開いて edit する
-だけで完結する．
-
-### 3.1 rasc.exe / e² studio で新規プロジェクト作成 (in-place)
-
-1. `rasc.exe` (推奨．`C:/Renesas/RA/sc_v2025-12_fsp_v6.4.0/eclipse/rasc.exe`)
-   または e² studio v2025-12 を起動．
-2. `File → New → Renesas C/C++ Project → Renesas RA`．
-3. **Project location**: `Use default location` のチェックを **外し**，
-   `Browse` で本リポジトリの `target/ek_ra6m5_llvm/` を選択．
-4. **Project name**: `fsp` (これにより `target/ek_ra6m5_llvm/fsp/` が
-   新規作成される．configuration.xml も最終的にここに配置される)．
-5. **Board**: `EK-RA6M5`．
-6. **Toolchain**: `LLVM Embedded Toolchain for Arm (ATfE)`．
-7. **Device**: `R7FA6M5BH3CFC`．
-8. **Project Type**: `Flat (Non-TrustZone) Project`．
-9. **Build Artifact / RTOS**: `No RTOS`．
-
-### 3.2 Smart Configurator で構成
-
-`target/ek_ra6m5_llvm/fsp/configuration.xml` が生成されるので，これを
-開いて以下を設定:
-
-| タブ | 設定 |
-|---|---|
-| **Clocks** | HOCO 20MHz → PLL → ICLK 200MHz, PCLKD = ICLK/2 = 100MHz |
-| **Stacks → New Stack → Driver → Connectivity → r_sci_uart** | SCI7 を選択．**Name = `g_uart_log`** (115200bps, 8N1) |
-| **Stacks → New Stack → Driver → Timers → r_gpt** | GPT320 (32-bit, Free Run, Source clock = PCLKD/4)．**Name = `g_timer_freerun`** |
-| **Stacks → New Stack → Driver → Timers → r_gpt** | GPT321 (32-bit, One-Shot, Source clock = PCLKD/4)．**Name = `g_timer_alarm`** |
-| **Stacks → New Stack → Driver → Input → r_ioport** | デフォルトのまま．**Name = `g_ioport`** (target_config.c が `g_ioport_ctrl` / `g_bsp_pin_cfg` を参照) |
-| **Pins** | P614=RXD7 (Arduino D0 = Pin 0), P613=TXD7 (Arduino D1 = Pin 1) が AF (SCI7) になっていることを確認 |
-| **Properties** | (任意) 各モジュールの Interrupt Priority を確認 |
-
-> Stack の **Name** は Smart Configurator 画面右ペインの "Properties" タブ
-> 「Common → Name」で設定する．既定の `g_uart0`, `g_timer0`, ... をそのまま
-> 採用してもビルドは通るが，本ポートでは **用途を表す名前** を採用して
-> `ra_gen/hal_data.{c,h}` のシンボル (`g_uart_log_ctrl`, `g_uart_log_cfg`,
-> `g_timer_freerun_ctrl` …) と target ソースの参照を一貫させる．
-
-設定が完了したら **`File → Save` (Ctrl+S)** で `configuration.xml` を
-保存．`Generate Project Content` を **クリックする必要は無い** —
-`ra/` `ra_cfg/` `ra_gen/` の生成は Claude が `rascc --generate` で実行
-する．**ユーザの GUI 作業はここまで**．以後は rasc/e² studio を閉じて
-Claude に「Phase 2-A §B 完了．§C 以降を引き継いで」と依頼．`commit` と
-`rascc --generate` は **Claude が自動実行** する．詳細は
-[`phase2.md`](../../phase2.md) §C 参照．
-
-### 3.3 後日のドライバ追加・構成変更
-
-configuration.xml がコミット済 + ローカルの `fsp/ra/` 等が rascc 生成済
-の状態であれば，rasc.exe / e² studio で **`target/ek_ra6m5_llvm/fsp/`
-プロジェクトを `Open Project` で開き直す** だけで Stacks/Pins 編集が
-できる．Save 後 Claude が `rascc --generate` で in-place 再生成．以後の
-commit も同様に Claude に引き継げる．
-
-外部ワークスペースに別プロジェクトを作って差分コピーする必要はない．
-
-### 3.4 確定すべき値
-
-`ra_gen/vector_data.c` を開き，`g_interrupt_event_link_select[]` の
-順序から下記スロット番号を読み取り，対応する INTNO (= スロット + 16)
-を本層各ファイルに反映する:
-
-| 用途 | 対応イベント | コード上の場所 | 確認後の値 |
-|---|---|---|---|
-| シリアル受信 | `BSP_PRV_VECTOR_EVENT_SCI7_RXI` | [`target_serial.h`](target_serial.h) `INTNO_SIO`, [`target_serial.arxml`](target_serial.arxml) | TODO |
-| HW カウンタ Alarm | `BSP_PRV_VECTOR_EVENT_GPT321_OVF` 相当 (GTPR 周期割込) | [`target_hw_counter.h`](target_hw_counter.h) `GPT321_INTNO`, [`target_hw_counter.arxml`](target_hw_counter.arxml) | TODO |
-
-## 4. システムクロック・ペリフェラル
+`fsp/configuration.xml` (Smart Configurator → Clocks タブ) で構成:
 
 | 項目 | 値 |
 |---|---|
-| クロックソース | HOCO 20MHz |
-| PLL | M=2, N=40 (要 Smart Configurator 確認) → ICLK 200MHz |
-| ICLK | 200 MHz |
-| PCLKD | 100 MHz (タイマ用) |
-| PCLKB | 50 MHz (SCI 用，要 Smart Configurator 確認) |
+| クロックソース | HOCO 20MHz (内蔵高速発振) |
+| PLL | M=2, N=40, P=2 → 200 MHz |
+| ICLK (CPU) | 200 MHz |
+| PCLKA (バス) | 100 MHz |
+| PCLKB (SCI) | 50 MHz |
+| PCLKD (タイマ) | 100 MHz |
 | 電源モード | High-speed |
 
 `ek_ra6m5.h` の `CPU_CLOCK_HZ` で 200 MHz，`PCLKD_HZ` で 100 MHz を
-定数化．Smart Configurator の `bsp_clock_cfg.h` と一致させること．
+定数化．Smart Configurator 生成 `bsp_clock_cfg.h` と一致させること．
+
+## 5. 使用するシステムリソース
 
 ### GPIO
 
 | 信号 | ピン | 役割 | 代替機能 |
 |---|---|---|---|
-| SCI7_RXD | P614 (Arduino J24-D0, Pin 0) | シリアル受信 | AF (SCI7) |
-| SCI7_TXD | P613 (Arduino J24-D1, Pin 1) | シリアル送信 | AF (SCI7) |
+| SCI7_RXD | P614 (Arduino J24-D0) | シリアル受信 | AF (SCI7) |
+| SCI7_TXD | P613 (Arduino J24-D1) | シリアル送信 | AF (SCI7) |
 | LED1 (Blue) | P006 | (アプリ用予約) | GPIO Out |
 | LED2 (Green) | P004 | (アプリ用予約) | GPIO Out |
 | LED3 (Red) | P008 | (アプリ用予約) | GPIO Out |
@@ -161,17 +101,55 @@ commit も同様に Claude に引き継げる．
 
 | 用途 | ペリフェラル | 詳細 |
 |---|---|---|
-| シリアル (SIO) | **SCI7** | 115200bps, 8N1, 割込み駆動 RX (`INTNO_SIO=TODO`, INTPRI=2) |
-| ハードウェアカウンタ (フリーランニング) | **GPT320** | 32-bit, PCLKD 直結 (1MHz 換算は target_hw_counter.h の TIMER_CLOCK_HZ で調整) |
-| ハードウェアカウンタ (アラーム) | **GPT321** | 32-bit, ワンショット, 割込み有効 (`GPT321_INTNO=TODO`, INTPRI=1) |
+| シリアル (SIO) | **SCI7** | 115200 bps, 8N1, 割込み駆動 RX (`INTNO_SIO=17`, INTPRI=2) |
+| ハードウェアカウンタ (フリーランニング) | **GPT320** | 32-bit, PCLKD/4 = 25 MHz tick．割込み未使用 |
+| ハードウェアカウンタ (アラーム) | **GPT321** | 32-bit, ワンショット, PCLKD/4 = 25 MHz tick．割込み有効 (`GPT321_INTNO=16`, INTPRI=1) |
 
-ATK2 の `MAIN_HW_COUNTER` (1us/tick) は GPT320 (現在値読出) と GPT321
-(ワンショットアラーム) の組合せで実装．サンプルは 10ms 周期でタスクを
-起こす `MainCycArm` アラームを構成する．
+ATK2 の `MAIN_HW_COUNTER` は **`TIMER_CLOCK_HZ = 25 MHz`** (PCLKD/4)
+基準で動作．`target_hw_counter.h` で `TICK_FOR_1MS = 25000`,
+`TICK_FOR_1S = 25000000` を定数化．サンプルは 10 ms 周期でタスクを
+起こす `MainCycArm` アラームを `MAIN_HW_COUNTER` 上に構成している．
+
+> **注**: NUCLEO-H563ZI は 1 MHz tick (1 us 単位) だが，本ターゲットは
+> 25 MHz tick (40 ns 単位)．`OsSecondsPerTick` は ARXML 側で揃えている．
+
+### シリアル経路
+
+EK-RA6M5 の **J24 Arduino 互換ヘッダ** 経由で外付け USB-Serial 変換
+アダプタを接続して使う想定．**J-Link OB Virtual COM Port (SCI9) は
+使用しない**．
+
+```
+EK-RA6M5 J24 (Arduino D0/D1)
+   Pin 0 (D0, RX) = P614  ←─ Tx of USB-Serial adapter
+   Pin 1 (D1, TX) = P613  ─→ Rx of USB-Serial adapter
+                  ↓
+              SCI7 (RXI on slot 1, TXI/TEI/ERI disabled at INTPRI=15)
+```
+
+### ICU IELSR (Interrupt Event Link Select)
+
+RA6M5 は NVIC スロット 0..95 に **任意の RA イベント** を ICU.IELSR で
+動的に割付ける構造．Smart Configurator が `ra_gen/vector_data.c` に
+`g_interrupt_event_link_select[]` として配列を生成し，`target_irq_data.c`
+(本層) で抽出して `target_initialize()` 中に `R_ICU->IELSR[]` へ転記する．
+
+| NVIC スロット | INTNO | RA イベント | 用途 |
+|---|---|---|---|
+| 0 | 16 | `BSP_PRV_VECTOR_EVENT_GPT0_COUNTER_OVERFLOW` (GPT321 OVF) | HW カウンタアラーム |
+| 1 | 17 | `BSP_PRV_VECTOR_EVENT_SCI7_RXI` | シリアル受信 |
+| 2 | 18 | (TXI; 本ポートでは無効) | — |
+| 3 | 19 | (TEI; 本ポートでは無効) | — |
+| 4 | 20 | (ERI; 本ポートでは無効) | — |
+
+> Smart Configurator の **Properties → Interrupts → Priority** で
+> `g_timer_alarm` を 13, `g_uart_log` RXI を 14, TXI/TEI/ERI を 15 に
+> 設定済．これは ATK2 の INTPRI (1〜15) ではなく FSP の NVIC 物理優先度
+> (0〜15) なので注意．
 
 ### 例外ハンドラ優先度
 
-ARM Cortex-M33 の優先度ビット幅は 4bit (0x00 〜 0xF0):
+ARM Cortex-M33 の優先度ビット幅は 4 bit (0x00 〜 0xF0):
 
 | 用途 | 優先度 (raw) | 備考 |
 |---|---|---|
@@ -181,7 +159,7 @@ ARM Cortex-M33 の優先度ビット幅は 4bit (0x00 〜 0xF0):
 | SVCall | 0xE0 | OS 割込み禁止より低 |
 | PendSV | 0xFF | 最低 (tail-chain で動く) |
 
-## 5. ターゲット定義事項
+## 6. ターゲット定義事項
 
 `target_kernel.h` で以下を定義:
 
@@ -196,72 +174,32 @@ ARM Cortex-M33 の優先度ビット幅は 4bit (0x00 〜 0xF0):
 
 割込み番号の範囲と優先度ビット幅 (`TMIN_INTNO=16`, `TMAX_INTNO=111`,
 `TNUM_INT=96`, `TBITW_IPRI=4`) はチップ層
-`arch/arm_m_llvm/ra_fsp/chip_config.h` で定義される．RA6M5 の ICU
-イベントリンクスロット数 (`BSP_ICU_VECTOR_NUM_ENTRIES = 96`) と一致．
+[`arch/arm_m_llvm/ra_fsp/chip_config.h`](../../arch/arm_m_llvm/ra_fsp/chip_config.h)
+で定義される．RA6M5 の ICU イベントリンクスロット数
+(`BSP_ICU_VECTOR_NUM_ENTRIES = 96`) と一致．
 
-`Makefile.target` で `FPU_USAGE = FPU_LAZYSTACKING` をデフォルトに設定．
+`Makefile.target` では:
 
-## 6. 起動経路と FSP `SystemInit()` の取扱
-
-ATK2 の `arch/arm_m_gcc/common/start.S` は次のフローでカーネルを起動する:
-
-```
-_kernel_start:
-    cpsid i
-    [INIT_MSP]
-    bl  hardware_init_hook    ← BSS 初期化「前」
-    BSS clear
-    DATA copy
-    bl  software_init_hook    ← BSS 初期化「後」 (default weak)
-    bl  main → StartOS → target_initialize
-                          → target_hardware_initialize
-                          → prc_initialize
-```
-
-FSP `SystemInit()` は内部で `bsp_init_uninitialized_vars()` 等
-**BSS 領域の変数を触る**ため，**`hardware_init_hook` (BSS 前) から
-呼んではならない**．本層では下記の方針 (Phase 2-B 設計判断 α):
-
-- `hardware_init_hook()` は **空** (FPU 設定も FSP に委ねる)．
-- `target_hardware_initialize()` (BSS 後，StartOS 経由) で `SystemInit()`
-  を呼ぶ．これにより FSP の `bsp_init_uninitialized_vars` /
-  `R_BSP_WarmStart` チェインが安全に走る．
-- `prc_initialize()` で VTOR を ATK2 ベクタテーブルへ書換える．FSP
-  `SystemInit()` 内の VTOR 書込みは後で上書きされるため順序を厳守:
-  必ず `target_hardware_initialize` → `prc_initialize` の順．
-
-### IELSR テーブルの設定
-
-`target_initialize()` で Smart Configurator 生成
-`g_interrupt_event_link_select[]` を `R_ICU->IELSR[]` に転記する．これが
-無いと NVIC スロットに紐づくイベントが決まらず，どの割込みも入らない．
-
-ただし FSP 生成 `vector_data.c` は `g_vector_table[]` (ATK2 と衝突) と
-`g_interrupt_event_link_select[]` (必須) が同居する．本層では Phase 2-B
-で下記いずれかを Phase 2-A 完了後に確定:
-
-- **(a) 抽出方式**: `g_interrupt_event_link_select[]` だけ
-  `target_irq_data.c` に転記してビルド対象に追加，`vector_data.c` は除外．
-- **(b) リネーム方式**: ビルド時に `arm-none-eabi-objcopy --redefine-sym
-  g_vector_table=fsp_g_vector_table_unused vector_data.o` で衝突回避．
-- **(c) リンカ廃棄**: リンカスクリプトの `/DISCARD/` で FSP
-  `g_vector_table[]` を破棄．
-
-TODO[Phase 2-A]: 上記方式を確定し，`Makefile.target` を更新．現状の
-`Makefile.target` は方式 (a) を仮置きしている (vector_data.o を
-KERNEL_COBJS から外している)．
+| 変数 | 値 | 内容 |
+|---|---|---|
+| `FPU_USAGE` | `FPU_LAZYSTACKING` | デフォルト．他の値は `arch/arm_m_gcc/common/README.md` 参照 |
+| `MCU_GROUP` | `ra6m5` | FSP `bsp/mcu/<group>/` の選択．`Makefile.chip` の `INCLUDES` に渡る |
+| `TOPPERS_TZ_S` | (define) | `arm_m.h` の `EXC_RETURN` を Secure (`0xFFFFFFFD`) に切替．RA6M5 + FSP "Flat Non-TrustZone Project" は実装上 Full Secure 動作のため必須 |
 
 ## 7. ファイル構成
 
 ```
 target/ek_ra6m5_llvm/
 ├── README.md                       このファイル
-├── Makefile.target                 Makefile のターゲット依存部
-├── r7fa6m5bh.ld                    リンカスクリプト
-├── ek_ra6m5.h                      ボード資源定義 (ピン, クロック, SCI7 ベース)
+├── Makefile.target                 Makefile のターゲット依存部 (TOPPERS_TZ_S 等)
+├── r7fa6m5bh.ld                    リンカスクリプト (Flash/SRAM/Option Setting Memory)
+├── ek_ra6m5.h                      ボード資源定義 (ピン, クロック, LED)
 ├── target_kernel.h                 カーネル設定 (スタックサイズ等)
 ├── target_config.c / .h            初期化・SCI7 ドライバ・ISR テーブル
-├── target_serial.h                 sysmod/serial.c 用ヘッダ (INTNO_SIO 等)
+│                                   (SystemInit + R_IOPORT_Open + IELSR セットアップ)
+├── target_irq_data.c               g_interrupt_event_link_select[] を vector_data.c
+│                                   から抽出した IELSR 元データ
+├── target_serial.h                 sysmod/serial.c 用 (INTNO_SIO=17 等)
 ├── target_serial.arxml             シリアル ISR の ATK2 cfg 定義
 ├── target_hw_counter.c / .h        HW カウンタ (GPT320/GPT321) ドライバ
 ├── target_hw_counter.arxml         HW カウンタの ATK2 cfg 定義
@@ -272,8 +210,12 @@ target/ek_ra6m5_llvm/
 ├── target.tf                       pass2 ターゲット依存テンプレート
 ├── target_check.tf                 pass3 チェック用テンプレート
 ├── target_offset.tf                offset.h 生成用テンプレート
+├── e2studio/                       e² studio デバッグ専用プロジェクト (§9)
+│   └── sample_debug/
+│       ├── .project
+│       └── sample_debug DebugOnly.launch
 └── fsp/                            Renesas FSP 関連 (本サブツリーに集約)
-    ├── configuration.xml           Smart Configurator 真値 (Phase 2-A で commit)
+    ├── configuration.xml           Smart Configurator 真値 (committed)
     ├── ra/                         rascc --generate 生成 (gitignored)
     │   └── fsp/                    FSP 本体 (inc/, src/bsp/, src/r_*/)
     ├── ra_cfg/                     rascc --generate 生成 (gitignored)
@@ -282,28 +224,151 @@ target/ek_ra6m5_llvm/
         ├── common_data.{c,h}, hal_data.{c,h}, pin_data.c, vector_data.{c,h}
 ```
 
-## 8. 既知の制限・課題 (Phase 2-B 時点)
+## 8. ビルド方法 (1) - Make + msys2 + ATfE
 
-- **本層単独ではビルドできない**．`fsp/ra_cfg/fsp_cfg/bsp/bsp_cfg.h`
-  `fsp/ra_gen/hal_data.c` 等が Smart Configurator 出力前提のため．
-  Phase 2-A 完了後に Phase 3 (`obj/obj_ek_ra6m5/Makefile`) と組み合わせて
-  ビルド可能になる．
-- **`vector_data.c` の取扱方式**は Phase 2-A 完了後に (a)/(b)/(c) から
-  確定．現状 `Makefile.target` の `KERNEL_COBJS` は方式 (a) を仮定．
-- **INTNO 値**は暫定値．`target_serial.{h,arxml}` の `INTNO_SIO`，
-  `target_hw_counter.{h,arxml}` の `GPT321_INTNO` を Smart Configurator
-  生成 `vector_data.c` の実値で確定すること．
-- **GPT のクロック源**は PCLKD 直結 (`TPCS=DIV1`) 固定．1MHz tick への
-  分周は `TIMER_CLOCK_HZ` の最終値確定に伴って再検討．
-- **`bsp_linker.c` (Option Setting Memory)** は Phase 3 で `KERNEL_COBJS`
-  に追加判断．Phase 2 では未対応．
-- **TrustZone (Cortex-M33 Secure 側)** は未対応．Non-Secure 単一ビルド前提．
-- **R_BSP_IrqStatusClear** を ISR 側で呼ぶラッパは Phase 3 で整備．現状
-  `target_config.c` の SCI7 ISR は SSR フラグクリアのみで IELSR.IR は
-  クリアしていない (FSP の動作と相性確認が必要)．
+最小工数のコマンドラインビルド．Windows + msys2 環境で動作確認済み．
 
-## 9. バージョン履歴
+### 必要なもの
 
-- 2026-04: Phase 2-B 骨格作成．SCI7 / GPT320/321 ドライバ，リンカ
-  スクリプト，cfg テンプレート一式を NUCLEO-H563ZI 版から派生．
-  Smart Configurator 出力 (`ra_cfg/`, `ra_gen/`) は未取込．
+- **ARM LLVM (ATfE) 21.1.1**．Renesas e² studio v2025-12 同梱．
+  - 標準パス: `C:/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/toolchains/llvm_arm/ATfE-21.1.1-Windows-x86_64/bin/`
+- **GNU Make 4.x** (msys2 もしくは Renesas e² studio 同梱版)
+- **Python 3.7+** (cfg_py 用)
+- **Renesas FSP + Smart Configurator 6.4.0** (clone 後の初回セットアップ用)
+
+### 8.1 初回セットアップ (clone 後 1 回のみ)
+
+FSP ソースは本リポジトリに **同梱しない**．`rascc.exe --generate` で
+`target/ek_ra6m5_llvm/fsp/` 配下に展開する:
+
+```sh
+# rascc.exe の標準パス (Windows; bash の場合は forward-slash)
+RASCC='/c/Renesas/RA/sc_v2025-12_fsp_v6.4.0/eclipse/rascc.exe'
+"$RASCC" --generate target/ek_ra6m5_llvm/fsp/configuration.xml
+```
+
+これで `target/ek_ra6m5_llvm/fsp/{ra,ra_cfg,ra_gen}/` が生成される．
+詳細手順は
+[`arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md`](../../arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md)
+参照．
+
+### 8.2 ビルド手順
+
+ATfE clang を `PATH` に通してから make:
+
+```sh
+# bash 1 行で (Windows / msys2)
+export PATH="/c/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/toolchains/llvm_arm/ATfE-21.1.1-Windows-x86_64/bin:$PATH"
+cd obj/obj_ek_ra6m5
+make -j4
+```
+
+生成物 (build directory):
+
+- `atk2-sc1` (ELF)
+- `atk2-sc1.srec` (S-record, 書込み用)
+- `atk2-sc1.dump` (`llvm-objdump -d`)
+- `atk2-sc1.map` (リンクマップ)
+
+### 8.3 フラッシュ書き込み (J-Link)
+
+`make flash` で SEGGER J-Link 経由でボードへ書込み．`R7FA6M5BH` を
+固定で渡している:
+
+```sh
+make flash
+```
+
+内部実行コマンド:
+
+```
+JLink.exe -device R7FA6M5BH -if SWD -speed 4000 -CommandFile flash.jlink
+```
+
+`flash.jlink` は `Makefile` 内で動的生成 (loadbin + reset + go)．
+`-device` を引数で渡すことでターゲットプロセッサ選択 GUI を抑止している．
+
+## 9. ビルド方法 (2) - e² studio (デバッグ専用)
+
+### 9.1 e² studio でビルドできない理由
+
+**e² studio v2025-12 は Make ベースの外部ビルドをサポートしていない**．
+RA 系プロジェクトの CDT 構成は CMake バックエンド (`com.renesas.cdt.build.cmake.*`
+プラグイン) が前提で，本リポジトリのように `obj/obj_ek_ra6m5/Makefile`
++ ATfE clang を直接駆動する構成は IDE 内で再現できない．したがって
+**ビルドは §8 のコマンドライン (`make -j4`) を必ず使う**．
+
+e² studio は本ターゲットでは **デバッグ目的のみ** に使用する．make で
+出力した `obj/obj_ek_ra6m5/atk2-sc1` (ELF) を IDE が J-Link 経由でフラッシュ
+書込み・GDB ステップ実行に流すだけ．`target/ek_ra6m5_llvm/e2studio/sample_debug/`
+は CDT のソースインデックスもビルド構成も持たない最小プロジェクトで，
+立ち上げに `.project` と `*.launch` だけがあれば足りる作りになっている．
+
+### 9.2 デバッグセッションを開始する手順
+
+1. e² studio v2025-12 を起動し，ワークスペースを **任意の場所** に設定．
+   本リポジトリ内である必要は無い．
+2. メニュー: `File → Import → General → Existing Projects into Workspace`
+3. `Select root directory:` に
+   `target/ek_ra6m5_llvm/e2studio` を指定．
+4. `sample_debug` プロジェクトにチェックが入っていることを確認し，
+   `Finish`．
+5. プロジェクトツリーから `sample_debug` を右クリック →
+   `Debug As → Renesas GDB Hardware Debugging` (初回は
+   `sample_debug DebugOnly` 構成を選択)．
+6. 自動で J-Link が atk2-sc1 (ELF) をフラッシュへ書込み，`main()` 先頭
+   で停止する．
+
+> **注意**: `Copy projects into workspace` には **チェックを入れない**．
+> プロジェクトは元の場所から参照する形が想定．
+
+### 9.3 ELF パスの設定
+
+デバッグ構成で参照する ELF パスは launch ファイル内で
+`${workspace_loc:/${ProjName}}/atk2-sc1` 等の Eclipse 変数を使うのではなく，
+本リポジトリでは **`obj/obj_ek_ra6m5/atk2-sc1`** (絶対パス) を直接指定して
+いる．launch ファイルを開いて `Main` タブの `C/C++ Application` フィールド
+を環境に合わせて編集する必要がある．
+
+### 9.4 シリアル出力の確認
+
+EK-RA6M5 の **J24 Arduino ヘッダ** に外付け USB-Serial 変換アダプタを
+接続:
+
+- ホスト PC でアダプタが認識される COM ポートを開く．
+- 設定: 115200 bps, 8 N 1, フロー制御無し．
+- Tera Term / PuTTY / serial-mcp-server (`https://github.com/adancurusul/serial-mcp-server`) 等．
+
+## 10. 既知の制限
+
+- **TZEN=1 (TrustZone Secure / Non-Secure 分割) は未対応**．本ポートは
+  RA + FSP "Flat (Non-TrustZone) Project" 前提で，デバイスは OFS1.TZEN=0
+  の **Full Secure 単一** で動作する (`Makefile.target` の `-DTOPPERS_TZ_S`
+  はこの動作に対応する `EXC_RETURN` 値を選ぶための指定．§6 を参照)．
+  Secure / Non-Secure 分割を行う場合は別途 NSC 表や Veneer 配置等の
+  対応が必要．
+- **ROM 実行のみサポート**．RAM 実行は非対応．
+- **SCI7 以外のシリアル I/F は未対応**．他 SCI / USB-CDC は配線変更で
+  追加可能だが本層では未実装．
+- **DMA / DTC / DAC / ADC** 等は未使用．`configuration.xml` に Stack
+  追加 → `rascc --generate` 再実行で取込めるが本サンプル動作には不要．
+- **Backup Domain / RTC** は未使用．
+- **`vector_data.c` (FSP 生成)** は ATK2 ベクタテーブルと衝突するため，
+  `Makefile.target` の `KERNEL_COBJS` から除外している．代わりに
+  `target_irq_data.c` に `g_interrupt_event_link_select[]` のみを切り出して
+  ビルド対象としている．**割込みの追加や INTNO 変更を行うときは
+  Smart Configurator → `rascc --generate` → `target_irq_data.c` への手動
+  反映 → ARXML/ヘッダの INTNO 更新の順で作業する．背景と詳細手順は
+  [`arch/arm_m_llvm/ra_fsp/README.md` §6.3](../../arch/arm_m_llvm/ra_fsp/README.md#63-vector_datac-の取扱-重要ek-ra6m5-では方式-a-を採用)
+  を参照．**
+
+## 11. バージョン履歴
+
+- 2026-04: Phase 1〜4 完了．EK-RA6M5 への ATK2/SC1 ポートを新規作成．
+  - ARMv8-M Cortex-M33 + FPU (LAZYSTACKING デフォルト)
+  - Cortex-M33 + 96-slot ICU + FSP 6.4.0
+  - HW カウンタ (GPT320/GPT321 @ 25MHz tick)，シリアル (SCI7 @ 115200)
+  - `EXC_RETURN = 0xFFFFFFFD` (Full Secure: ES=1, S=1)．`-DTOPPERS_TZ_S`
+    で指定．
+  - e² studio デバッグ専用プロジェクト (`sample_debug/`) 同梱
+  - Phase 5 で cfg_py 回帰テスト整備 (`cfg/cfg_py/tests/test_integration_ek_ra6m5.py`)

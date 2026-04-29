@@ -292,36 +292,14 @@ OK → `Project` → `Clean...` → `Build`．
 | 高並列度で `process_begin: CreateProcessW(...) failed. make (e=87) パラメーターが間違っています` | GNU Make on Windows の高 -j 値での既知の競合．`-j` を下げる．STM32CubeIDE: Project Properties → C/C++ Build → Behavior → `Use parallel jobs` を **4** に手動設定 (`Use optimal jobs` だと CPU コア数になり多コア環境で発症．本リポジトリの `.cproject` は -j4 をデフォルトにしてある．8 でも発症する環境あり) |
 | シリアルに何も出ない | ST-Link Virtual COM Port のドライバ最新版を入れる．[ST 公式](https://www.st.com/en/development-tools/stsw-link009.html) |
 
-## 10. サンプルアプリケーション
-
-`sample/sample1.c` を流用 (ATK2 オリジナルの汎用テストプログラム)．
-
-USART3 にプロンプト `Input Command:` が出るので，下記コマンドを 1 文字
-入力すると対応する処理が走る．
-
-主要コマンド (本ボードでよく使うもの):
-
-| キー | 内容 |
-|---|---|
-| `1` 〜 `5` | 操作対象タスクの選択 |
-| `a` | 選択中タスクを `ActivateTask` |
-| `e` | 選択中タスクに `SetEvent(MainEvt)` |
-| `s` | `Schedule()` 呼出 |
-| `b` | アラームベース情報の表示 |
-| `B` | アラームの残ティック数表示 |
-| `T` | HW カウンタ (`MAIN_HW_COUNTER`) 値の表示 |
-| `6` | **HW カウンタ動作確認** (5 秒×4 回ログ出力) ※本移植版で追加 |
-| `Z` | 選択中タスクの状態表示 |
-| `x` | CPU 例外を起こす (`RAISE_CPU_EXCEPTION`) |
-
-## 11. 既知の制限
+## 10. 既知の制限
 
 - 書き込み実行 (ROM 実行) のみサポート．RAM 実行は非対応．
 - TrustZone (Cortex-M33 Secure 側) は未対応．Non-Secure ビルドのみ．
 - USART3 以外のシリアル I/F は未対応．
 - DMA / 高度な電源制御は未使用．
 
-## 12. バージョン履歴
+## 11. バージョン履歴
 
 - 2026-04: NUCLEO-H563ZI への ATK2/SC1 ポートを新規作成．
   - ARMv8-M Cortex-M33 + FPU (LAZYSTACKING デフォルト)
