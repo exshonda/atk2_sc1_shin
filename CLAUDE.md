@@ -106,6 +106,7 @@ The application's static OS configuration (tasks, alarms, counters, ISRs, resour
 
 - **コンパイラ**: **ARM LLVM (Arm Toolchain for Embedded; ATfE) 21.1.1**．Renesas e² studio v2025-12 に同梱．`C:/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/toolchains/llvm_arm/ATfE-21.1.1-Windows-x86_64/bin/clang.exe`．`--target=arm-none-eabi` で ARM ELF を生成．
 - **プロセッサ依存部**: `arch/arm_m_llvm/common/` (LLVM 用 Makefile.prc のみ)．**ソース本体 (`start.S`, `prc_config.{c,h}`, `prc_support.S` 等) は `arch/arm_m_gcc/common/` を vpath 経由で再利用** (`arch/arm_m_gcc/common/` は変更しない方針を維持)．
+- **AUTOSAR Compiler 抽象**: `arch/llvm/` (`Compiler.h`, `Compiler_Cfg.h`) — clang 用ブリッジ層．`arch/gcc/` の同名ファイルを `#include` で取り込む．clang は `__inline__` `__asm__ volatile` `__attribute__((__noreturn__))` 等 GCC 互換属性を受け入れるためそのまま動く．LLVM 固有の差異が必要になったら本層で override．
 - **チップ依存部**: `arch/arm_m_llvm/ra_fsp/` (RA ファミリ汎用; FSP 同梱しない)．`MCU_GROUP` 変数で個別チップに対応 (例: `ra6m5`, `ra6m4`, `ra4m2`, `ra6t2`)．`CORE_CPU` 上書きで Cortex-M85 (RA8) も対応可．
 - **ターゲット依存部**: `target/ek_ra6m5_llvm/` (EK-RA6M5 ボード固有)
 - **ビルドディレクトリ**: `obj/obj_ek_ra6m5/` (Phase 3 で作成予定)

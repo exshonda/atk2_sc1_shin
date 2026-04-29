@@ -23,6 +23,7 @@ TOPPERS/ATK2 (SC1) の **Renesas EK-RA6M5 Evaluation Kit** ボード向け
 | チップ依存部 | `arch/arm_m_llvm/ra_fsp/` | RA ファミリ汎用 + Renesas FSP 6.4.0 |
 | プロセッサ依存部 (LLVM 用 Makefile) | `arch/arm_m_llvm/common/` | ARM LLVM (ATfE) 用ビルド設定 |
 | プロセッサ依存部 (ソース) | `arch/arm_m_gcc/common/` | start.S, prc_config.{c,h}, prc_support.S 等．LLVM ビルドからは vpath で参照 (untouched) |
+| AUTOSAR Compiler 抽象 (LLVM ブリッジ) | `arch/llvm/` | Compiler.h, Compiler_Cfg.h．`arch/gcc/` を取込 (clang は GCC 互換属性を受け入れる) |
 
 ## 2. メモリマップ
 

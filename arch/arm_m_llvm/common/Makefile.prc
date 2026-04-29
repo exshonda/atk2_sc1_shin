@@ -77,7 +77,12 @@ vpath %.S $(PRC_SRC_DIR)
 #
 #  コンパイルオプション
 #
-INCLUDES := $(INCLUDES) -I$(PRC_SRC_DIR) -I$(SRCDIR)/arch/gcc
+#  -I$(SRCDIR)/arch/llvm: AUTOSAR Compiler 抽象化 (Compiler.h, Compiler_Cfg.h)
+#                        の LLVM 用ブリッジ．実体は arch/gcc/ を取込んでいる
+#                        が，clang ビルドからは arch/llvm/ を経由する命名
+#                        にしてある (arch/gcc/ を直接参照すると誤読される)．
+#
+INCLUDES := $(INCLUDES) -I$(PRC_SRC_DIR) -I$(SRCDIR)/arch/llvm
 COPTS    := $(COPTS) -fno-common -ffunction-sections -fdata-sections
 LDFLAGS  := $(LDFLAGS) -Wl,--gc-sections
 #
