@@ -1,0 +1,5 @@
+h
+loadfile atk2-sc1.srec
+r
+g
+q

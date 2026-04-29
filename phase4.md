@@ -290,6 +290,115 @@ EK-RA6M5 の **Arduino UNO 互換ヘッダ J24** に下記接続:
 - R_ICU->IELSR[0] (= GPT321 OVF 想定): 0x________
 ```
 
+---
+
+## 進捗記録 (2026-04-29 セッション中断時点)
+
+### 達成済み (実機 EK-RA6M5 で検証)
+
+- **4-1**: 起動 ✓ (`start.S` → `main` → `StartOS` → `target_initialize` 全て通過)
+- **4-2**: クロック ICLK 200MHz ✓ (FSP `SystemInit` 完了．banner 出力速度より傍証)
+- **4-3**: SCI7 送信 (ポーリング) ✓
+  - banner + `pass1` がホスト側のシリアル端末で受信可能 (115200 8N1)
+  - `target_fput_str` / `target_fput_log` ともに動作
+
+### 起動時 HardFault 5 件を順次修正済 (commit `2be2d90` 〜 `ed31f97`)
+
+1. **Thumb bit 二重加算**: ATK2 `prc.tf` の `(uint32)func + 1` が clang ATfE +
+   ld.lld の組合せで二重加算となり vector LSB=0．`obj/obj_ek_ra6m5/Makefile`
+   の sed post-process で `+1` を除去．
+2. **MSPLIM 不整合**: FSP `system.c` が `__set_MSPLIM(&g_main_stack[0])` を実行．
+   stub の g_main_stack を `.bss.g_main_stack` 専用セクションに置いて BSS 先頭
+   (= SRAM 0x20000000) 配置．
+3. **`__VECTOR_TABLE` 壊れスタブ**: `PROVIDE(__Vectors = kernel_vector_table)`
+   でリンカエイリアス．SCB->VTOR 書込みが no-op になり SystemInit 中の例外も
+   ATK2 ハンドラへ正しくルーティング．
+4. **`__ram_zero` で OS スタック破壊**: `bsp_linker.c` の g_init_info の
+   zero/copy リストを全て (0,0) に．ATK2 start.S が既に BSS clear / DATA copy
+   完了している．
+5. **SCI7 / GPT module stop**: `R_BSP_MODULE_START(FSP_IP_SCI, 7)` と
+   `R_BSP_MODULE_START(FSP_IP_GPT, 0/1)` を `sci7_low_init` /
+   `init_hwcounter_MAIN_HW_COUNTER` 冒頭で呼出．`GTWP_WRITE_ENABLE = 0xA501`
+   が逆だった (正しくは `0xA500`，FSP の名前と紛らわしい) のも修正．
+6. **`g_interrupt_event_link_select` 抽出**: `target_irq_data.c` 新規作成．
+   FSP 生成 `vector_data.c` は g_vector_table と同居しビルド除外しているため
+   従来 weak 弱定義 (全 0) にフォールバック．これで R_ICU->IELSR が正しく設定．
+
+### 中断時点の課題: alarm 経路 (Phase 4-4/4-5) の HardFault
+
+GPT321 OVF 割込みは正しく発火し，
+`kernel_interrupt_entry` → `kernel_inthdr_16` → `kernel_notify_hardware_counter`
+→ `kernel_expire_process` → `BLX get_hwcounter` までは ISR 経路で実行を
+確認 (BP で確認済)．`get_hwcounter` は無事 return するが，その後 ~512μs
+以内に **CFSR=INVPC** で HardFault．
+
+#### 観測値
+
+| 項目 | 値 |
+|---|---|
+| HardFault 時 PC | 0x000002A6 (`default_exc_handler` infinite loop) |
+| LR (handler 内) | 0xFFFFFFB9 (= EXC_RETURN: thread/PSP/secure) |
+| MSP | 0x20002688 |
+| MSPLIM | 0x20000000 (健全) |
+| CFSR | 0x00040000 (INVPC: invalid PC from EXC_RETURN) |
+| HFSR | 0x40000000 (FORCED) |
+| 例外スタックフレーム LR | 0x00000000 ← bug! |
+| 例外スタックフレーム PC | 0x000085F8 (.rodata 領域 — 不正) |
+
+#### 仮説
+
+ATK2 dispatcher の `kernel_interrupt_entry` (arch/arm_m_gcc/common/prc_support.S
++ prc_config.c) が Cortex-M33 + TrustZone secure 環境で EXC_RETURN を
+正しく扱えていない可能性．ARMv8-M セキュリティ拡張ありの状態でハードウェア
+は exception entry 時に整合性シグニチャ + secure context を追加スタッキング
+するが，ATK2 共通コードはこれを想定せず単純な LR push/pop のみ．
+
+#### 暫定回避策 (本コミットに含む)
+
+- `sample/sample1.c`: `EK_RA6M5_BYPASS_ALARM` マクロで `SetRelAlarm` +
+  `WaitEvent` をスキップする実装に変更．
+- `target/ek_ra6m5_llvm/Makefile.target`: `-DEK_RA6M5_BYPASS_ALARM` を
+  追加．これで alarm 経路を完全回避し，busy loop で `Input Command:`
+  を繰り返し出力する形になる．SCI7 RX (Phase 4-4) を独立検証可能．
+
+### 次セッション着手時の調査ポイント (割込み経路の見直し)
+
+1. **ARMv8-M Cortex-M33 + TrustZone での例外スタッキング規則**
+   - `FPCCR.LSPACT` (Lazy Stacking)
+   - `FPCCR.S` / `FPCCR.SFRDY` (secure FP)
+   - `CONTROL.FPCA` の状態
+   - secure-to-secure exception 時の追加スタッキング (16 word integrity 含む)
+
+2. **ATK2 `arch/arm_m_gcc/common/prc_support.S` の見直し**
+   - `_kernel_interrupt_entry` の push/pop が EXC_RETURN を正しく
+     preserve するか
+   - PSP/MSP 切替が secure 拡張下で問題ないか
+   - `_kernel_dispatcher_0` が secure context を正しく扱うか
+
+3. **Cortex-M33 secure debug 設定**
+   - bsp_cfg.h の TrustZone 関連定義 (BSP_TZ_NONSECURE_BUILD, etc.)
+   - OFS/SAR レジスタの secure 境界設定
+   - 必要なら `Flat Non-TrustZone` を維持しつつ secure 専用設定を選択
+
+4. **NVIC priority と BASEPRI の整合**
+   - 現在 GPT321 OVF priority=0xF0 / SCI7 RXI priority=0xE0
+   - tmin_basepri=0x10 で C2ISR 全許可 (priority < 0xFF mask 範囲外)
+   - PendSV/SVC priority が secure 側で正しく登録されているか
+   - 各 IRQ で AIRCR.PRIS (Priority Inversion) が想定通りか
+
+5. **alternative**: ATK2 共通を変更したくない場合，FSP r_sci_uart / r_gpt
+   ドライバ経由で割込みを扱う実装に切替．`R_SCI_UART_Open` /
+   `R_GPT_Open` を呼び FSP 提供のコールバックチェインに乗せれば，
+   ATK2 はそのコールバックの上で動くだけになり Cortex-M33 secure 関連
+   の細かいスタッキング差異を FSP に任せられる．
+
+### 動作確認用ヘルパー
+
+- `obj/obj_ek_ra6m5/flash.jlink`: J-Link Commander スクリプト
+  (h / loadfile / r / g / q)．`make flash` 経由ではなく
+  `JLink -device R7FA6M5BH -if SWD -speed 4000 -autoconnect 1 -nogui 1
+  -CommandFile flash.jlink` で書込み可能．
+
 ## 後続フェーズへの引継
 
 - Phase 5 で cfg_py の回帰テストフィクスチャを EK-RA6M5 用に追加 (任意)．

@@ -71,7 +71,8 @@ INCLUDES := $(INCLUDES) -I$(TARGETDIR) \
                         -I$(RA_GEN_DIR)
 CDEFS    := $(CDEFS) -DINIT_MSP \
                      -DEK_RA6M5_HAVE_VECTOR_DATA \
-                     -DEK_RA6M5_USE_FSP_PINCFG
+                     -DEK_RA6M5_USE_FSP_PINCFG \
+                     -DEK_RA6M5_BYPASS_ALARM
 #
 #  EK_RA6M5_HAVE_VECTOR_DATA : target_config.c 内の R_ICU->IELSR[] 設定
 #                              ループを有効化．Phase 2-A で
