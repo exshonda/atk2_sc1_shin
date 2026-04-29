@@ -596,16 +596,8 @@ TASK(MainTask)
 
 	/*
 	 *  MainCycArmを周期アラームとして設定
-	 *
-	 *  EK_RA6M5_BYPASS_ALARM: EK-RA6M5 (LLVM port) 暫定デバッグフラグ．
-	 *  ATK2 dispatcher の Cortex-M33 secure 例外復帰経路で HardFault する
-	 *  問題があり，それを回避して SCI7 RX (Phase 4-4) を独立に検証する
-	 *  ためのフラグ．alarm 経路 (SetRelAlarm + WaitEvent) を完全にスキップ
-	 *  し，busy loop でひたすら "Input Command:" を出して GetCommand する．
 	 */
-#ifndef EK_RA6M5_BYPASS_ALARM
 	SetRelAlarm(MainCycArm, TICK_FOR_10MS, TICK_FOR_10MS);
-#endif
 
     syslog(LOG_INFO, "pass1");
 
@@ -613,10 +605,8 @@ TASK(MainTask)
 	 *  コマンド実行ループ
 	 */
 	while (1) {
-#ifndef EK_RA6M5_BYPASS_ALARM
 		WaitEvent(MainEvt);     /* 10msの作業時間待ち */
 		ClearEvent(MainEvt);
-#endif
 
 		/*
 		 *  入力コマンド取得

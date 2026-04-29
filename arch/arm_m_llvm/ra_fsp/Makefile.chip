@@ -88,7 +88,11 @@ CDEFS    := $(CDEFS) -D_RENESAS_RA_
 #  H5 (NUCLEO-H563ZI) はこの override をしないので 0xffffffbc のまま
 #  Non-Secure 動作 (実機確認済)．
 #
-CDEFS    := $(CDEFS) -DEXC_RETURN=0xffffffbd
+#  bit 0 (ES) = 1 : Secure 例外処理状態
+#  bit 6 (S)  = 1 : Secure prior context (= 例外発生前も Secure)
+#  両方 1 で 0xFD．bit 6=0 (= 0xBD) だと SFSR.INVTRAN (Invalid Transition)
+#  でフォルトする (S→NS 跨ぎ branch が integrity signature 検証で reject)．
+CDEFS    := $(CDEFS) -DEXC_RETURN=0xfffffffd
 
 #
 #  Cortex-M33/M85 の FPU アーキテクチャ定義 (Makefile.prc が参照)
