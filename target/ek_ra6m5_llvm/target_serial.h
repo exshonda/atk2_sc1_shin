@@ -37,21 +37,15 @@
 /*
  *  SCI7 受信割込みのベクタ番号 / 割込み優先度
  *
- *  ★★★ TODO[Phase 2-A 必須]: 暫定値 — Smart Configurator 出力受領後に
- *                              必ず実値に置き換えること ★★★
- *
- *  RA6M5 の NVIC スロット番号は Smart Configurator (vector_data.c) が
- *  決定する．Phase 2-A 完了後，target/ek_ra6m5_llvm/ra_gen/vector_data.c
- *  の `g_interrupt_event_link_select[]` 配列を開き，SCI7_RXI が割り当て
- *  られている配列インデックス N を確認．下記 `INTNO_SIO` を `N + 16`
- *  (= 例外番号) に修正．`target_serial.arxml` の `<VALUE>` も同値に
- *  合わせること．**INTNO 不一致のまま実機実行すると別ペリフェラルの
- *  ISR が呼ばれて HardFault になる**．
- *
- *  暫定値 16 (= IRQ0) は cfg ツールがビルドエラーを起こさないための
- *  ダミー．Phase 2-A を経ずに実機書込みするのは禁止．
+ *  Phase 2-A で確定した値．
+ *  fsp/ra_gen/vector_data.c の g_interrupt_event_link_select[] において:
+ *    [1] = BSP_PRV_VECT_ENUM(EVENT_SCI7_RXI, GROUP1)  → スロット 1 + 16 = 17
+ *  configuration.xml で SCI7 RXI Priority=14 を設定したため，FSP が
+ *  IRQ1 スロット (NVIC 優先度 0xE0) を割り当てた．ATK2 cfg pass2 は
+ *  本値を用いて kernel_vector_table[] にハンドラを配置する．
+ *  target_serial.arxml の OsIsrInterruptNumber も同じ値．
  */
-#define INTNO_SIO       UINT_C(16)   /* TODO[Phase 2-A]: 暫定 IRQ0．要修正 */
+#define INTNO_SIO       UINT_C(17)   /* SCI7 RXI = NVIC スロット 1 + 16 */
 #define INTPRI_SIO      UINT_C(2)
 
 #ifndef TOPPERS_MACRO_ONLY

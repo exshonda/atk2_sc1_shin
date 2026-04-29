@@ -76,22 +76,19 @@
 /*
  *  GPT320 / GPT321 割込み番号
  *
- *  ★★★ TODO[Phase 2-A 必須]: 暫定値 — Smart Configurator 出力受領後に
- *                              必ず実値に置き換えること ★★★
+ *  Phase 2-A で確定した値．
+ *  fsp/ra_gen/vector_data.c の g_interrupt_event_link_select[] において:
+ *    [0] = BSP_PRV_VECT_ENUM(EVENT_GPT1_COUNTER_OVERFLOW, GROUP0)
+ *           → GPT321 (= g_timer_alarm) OVF．スロット 0 + 16 = 16
+ *  configuration.xml で GPT321 Overflow Priority=13 を設定したため，
+ *  FSP が IRQ0 スロット (NVIC 優先度 0xD0) を割り当てた．
+ *  target_hw_counter.arxml の OsIsrInterruptNumber も同じ値．
  *
- *  RA6M5 NVIC スロットは Smart Configurator (target/ek_ra6m5_llvm/ra_gen/
- *  vector_data.c) の `g_interrupt_event_link_select[]` で決定する．
- *  GPT321 オーバーフロー割込み (GPT321_OVF; GPT_OVF if "GPT_AGT_OVF" 等
- *  Smart Configurator 命名) のスロット N を確認し
- *  `GPT321_INTNO = N + 16` に修正．`target_hw_counter.arxml` の
- *  `<VALUE>` も同値に合わせること．INTNO 不一致のまま実機実行すると
- *  ATK2 アラームが起動せず，sample1 の `MainCyc` が動かない．
- *
- *  GPT320 はフリーランニングで割込み未使用なので INTNO は参照されないが，
- *  cfg ツール都合で形式上定義．
+ *  GPT320 はフリーランニングで割込み未使用 (Disabled)．INTNO は参照
+ *  されないが cfg ツール都合で形式上定義．
  */
-#define GPT320_INTNO        UINT_C(17)   /* TODO[Phase 2-A]: 暫定 (未使用) */
-#define GPT321_INTNO        UINT_C(18)   /* TODO[Phase 2-A]: 暫定．要修正 */
+#define GPT320_INTNO        UINT_C(0)    /* 未使用 (フリーランで IRQ Disabled) */
+#define GPT321_INTNO        UINT_C(16)   /* GPT321 OVF = NVIC スロット 0 + 16 */
 
 /*
  *  MAIN_HW_COUNTER 操作関数プロトタイプ

@@ -371,7 +371,7 @@
       <property id="module.driver.timer.gtioca_polarity" value="module.driver.timer.gtioc_polarity.normal"/>
       <property id="module.driver.timer.gtiocb_polarity" value="module.driver.timer.gtioc_polarity.normal"/>
       <property id="module.driver.timer.p_callback" value="NULL"/>
-      <property id="module.driver.timer.ipl" value="_disabled"/>
+      <property id="module.driver.timer.ipl" value="board.icu.common.irq.priority13"/>
       <property id="module.driver.timer.capture_a_ipl" value="_disabled"/>
       <property id="module.driver.timer.capture_b_ipl" value="_disabled"/>
       <property id="module.driver.timer.compare_match_c_ipl" value="_disabled"/>
@@ -417,10 +417,10 @@
       <property id="module.driver.uart.rs485.de_port_number" value="module.driver.uart.rs485.de_port_number.PORT_DISABLE"/>
       <property id="module.driver.uart.rs485.de_pin_number" value="module.driver.uart.rs485.de_pin_number.PIN_DISABLE"/>
       <property id="module.driver.uart.callback" value="NULL"/>
-      <property id="module.driver.uart.rxi_ipl" value="board.icu.common.irq.priority12"/>
-      <property id="module.driver.uart.txi_ipl" value="board.icu.common.irq.priority12"/>
-      <property id="module.driver.uart.tei_ipl" value="board.icu.common.irq.priority12"/>
-      <property id="module.driver.uart.eri_ipl" value="board.icu.common.irq.priority12"/>
+      <property id="module.driver.uart.rxi_ipl" value="board.icu.common.irq.priority14"/>
+      <property id="module.driver.uart.txi_ipl" value="board.icu.common.irq.priority15"/>
+      <property id="module.driver.uart.tei_ipl" value="board.icu.common.irq.priority15"/>
+      <property id="module.driver.uart.eri_ipl" value="board.icu.common.irq.priority15"/>
     </module>
     <context id="_hal.0">
       <stack module="module.driver.ioport_on_ioport.0"/>
