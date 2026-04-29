@@ -142,10 +142,45 @@ HAL の有効/無効選択がボードごとに変わり得るため．
 - `systemclock_config.c` で `SystemClock_Config()` を実装
 - リンカスクリプト (Flash/SRAM レイアウト)
 - ボード固有の GPIO/ペリフェラル初期化 (`target_config.c`)
+- **TrustZone セキュリティ状態の宣言** (下記 §9.1)
+
+### 9.1 TrustZone (TZEN オプションバイト) と EXC_RETURN
+
+STM32H5 は ARMv8-M Cortex-M33 + TrustZone 拡張持ち．デバイスの動作状態は
+**OFS1.TZEN オプションバイト**で決まる:
+
+| TZEN | 状態 | 説明 |
+|---|---|---|
+| **0** | TrustZone 無効化 (Non-Secure 単一) | **STM32H5 出荷時デフォルト**．`Flash CR.PROG` 等の通常書込みでフラッシュへアクセス．本ポートの想定 |
+| 1 | TrustZone 有効 (Secure / Non-Secure 分割) | 専用書込み手順 + secure/non-secure 別バイナリ．本ポートでは未対応 |
+
+ATK2 例外復帰時の `EXC_RETURN` 値は実行状態に依存する．本チップ層を使う
+ターゲット依存部 (`target/<target>/Makefile.target`) は **必ず**
+下記いずれか 1 つを define すること:
+
+- `TOPPERS_TZ_NS` : TZEN=0 (デフォルト) で運用するターゲット
+   → 例外復帰 `EXC_RETURN = 0xFFFFFFBC` (Non-Secure)
+- `TOPPERS_TZ_S`  : TZEN=1 で Secure ビルドにするターゲット
+   → 例外復帰 `EXC_RETURN = 0xFFFFFFFD` (Secure ES=S=1)
+
+定義例:
+
+```make
+# target/nucleo_h563zi_gcc/Makefile.target
+CDEFS := $(CDEFS) -DTOPPERS_TZ_NS
+```
+
+両方未定義／両方定義は `arch/arm_m_gcc/common/arm_m.h` でビルド時 `#error`．
+
+`nucleo_h563zi_gcc` (本ポートの基準ターゲット) は TZEN=0 想定で
+`-DTOPPERS_TZ_NS` を `Makefile.target` で定義している．
 
 ## 10. 既知の制限
 
-- TrustZone (Secure 側) は未対応．Non-Secure ビルドのみ．
+- TrustZone (TZEN=1, Secure 側) は未対応．本ポートは TZEN=0 (Non-Secure
+  単一) のみ動作確認．`-DTOPPERS_TZ_S` 切替は arm_m.h レベルでは
+  サポートしているが，HAL や Smart Configurator 設定はそれに合わせて
+  調整が必要．
 - HAL_TIM は無効化．TIM 駆動のアラームを HAL 経由で行いたい場合は
   別途対応が必要．
 - バックアップドメイン / RTC は未使用．

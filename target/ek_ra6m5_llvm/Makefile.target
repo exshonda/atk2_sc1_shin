@@ -69,7 +69,13 @@ INCLUDES := $(INCLUDES) -I$(TARGETDIR) \
                         -I$(RA_CFG_DIR)/fsp_cfg \
                         -I$(RA_CFG_DIR)/fsp_cfg/bsp \
                         -I$(RA_GEN_DIR)
+#  TOPPERS_TZ_S: ARMv8-M Cortex-M33 を Secure state で動作させる．
+#  arch/arm_m_gcc/common/arm_m.h の EXC_RETURN を Secure 用 (0xFFFFFFFD)
+#  に切替える．EK-RA6M5 + FSP "Flat Non-TrustZone Project" は OFS1.TZEN=0
+#  だが実装上 Full Secure 動作のため必須．省略すると arm_m.h でビルド時
+#  #error．
 CDEFS    := $(CDEFS) -DINIT_MSP \
+                     -DTOPPERS_TZ_S \
                      -DEK_RA6M5_HAVE_VECTOR_DATA \
                      -DEK_RA6M5_USE_FSP_PINCFG
 #

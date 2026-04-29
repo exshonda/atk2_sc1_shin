@@ -73,8 +73,17 @@ STM32CUBE_TARGET_DIR = $(TARGETDIR)/stm32fcube
 #
 #  コンパイルオプション
 #
+#  TOPPERS_TZ_NS : NUCLEO-H563ZI は STM32H5 デフォルトの OFS1.TZEN=0
+#                  (TrustZone 無効化された Non-Secure 単一動作) を
+#                  前提とする．arm_m.h の EXC_RETURN を Non-Secure 用
+#                  (0xFFFFFFBC) に設定する．TZEN=1 (Secure ビルド) に
+#                  切替えたい場合は本マクロを TOPPERS_TZ_S に変更する
+#                  (HAL/Smart Configurator 側の調整も別途必要)．
+#                  詳細は arch/arm_m_gcc/stm32h5xx_stm32cube/README.md §9.1．
+#
 INCLUDES := $(INCLUDES) -I$(TARGETDIR) -I$(STM32CUBE_TARGET_DIR)
-CDEFS    := $(CDEFS) -DSTM32H563xx -DINIT_MSP -DUSE_HAL_DRIVER
+CDEFS    := $(CDEFS) -DSTM32H563xx -DINIT_MSP -DUSE_HAL_DRIVER \
+                     -DTOPPERS_TZ_NS
 COPTS    := $(COPTS) -ffunction-sections -fdata-sections
 LDFLAGS  := $(LDFLAGS) -Wl,--gc-sections
 

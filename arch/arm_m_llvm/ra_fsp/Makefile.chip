@@ -75,24 +75,16 @@ LDFLAGS  := $(LDFLAGS) -mcpu=$(CORE_CPU) -mthumb
 CDEFS    := $(CDEFS) -D_RENESAS_RA_
 
 #
-#  EXC_RETURN を Secure (ES=1) に設定．
+#  TrustZone セキュリティ状態の選択は target 層 Makefile.target で
+#  TOPPERS_TZ_S または TOPPERS_TZ_NS を define する．chip 層では
+#  EXC_RETURN を直接定義しない．
 #
 #  Renesas RA + FSP "Flat (Non-TrustZone) Project" は TrustZone 区画
-#  を使わないが，デバイスは **Secure state のみ** で動作する (RA の
-#  デフォルト OFS1.TZEN=0 は「TZ 無効」だが実装上の security state は
-#  Secure)．したがって例外復帰時の EXC_RETURN は bit 0 (ES) = 1 で
-#  ないと CFSR.INVPC で HardFault する．
-#
-#  arch/arm_m_gcc/common/arm_m.h の既定値は 0xffffffbc (Non-Secure)
-#  なので，本層で 0xffffffbd (Secure) に override する．
-#  H5 (NUCLEO-H563ZI) はこの override をしないので 0xffffffbc のまま
-#  Non-Secure 動作 (実機確認済)．
-#
-#  bit 0 (ES) = 1 : Secure 例外処理状態
-#  bit 6 (S)  = 1 : Secure prior context (= 例外発生前も Secure)
-#  両方 1 で 0xFD．bit 6=0 (= 0xBD) だと SFSR.INVTRAN (Invalid Transition)
-#  でフォルトする (S→NS 跨ぎ branch が integrity signature 検証で reject)．
-CDEFS    := $(CDEFS) -DEXC_RETURN=0xfffffffd
+#  を使わないが，デバイスは **Secure state のみ** で動作する (OFS1.TZEN=0
+#  は「TZ 無効」だが実装上の security state は Secure)．したがって例外
+#  復帰時の EXC_RETURN は ES=1, S=1 でないと SFSR.INVTRAN または
+#  CFSR.INVPC で HardFault．本ファミリ向けの全ターゲットは
+#  Makefile.target で `CDEFS += -DTOPPERS_TZ_S` を必ず指定すること．
 
 #
 #  Cortex-M33/M85 の FPU アーキテクチャ定義 (Makefile.prc が参照)

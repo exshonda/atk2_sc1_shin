@@ -64,21 +64,45 @@
  *  ARMv8-M Cortex-M33: Thread mode, PSP使用, 標準フレーム (FType=1) を
  *  既定とする．ハンドラから疑似フレーム経由で例外復帰させる場合に bx する値．
  *
- *  bit 0 (ES, Exception Security state):
- *    - 0 = Non-Secure: STM32H5 等，TrustZone 無効化された Non-Secure
- *          実行環境．既定値．
- *    - 1 = Secure:     RA6M5 等の Renesas RA + FSP "Flat Non-TrustZone"
- *          ビルド．デバイスは Secure state のみで動作するため，例外
- *          ハンドラから戻る EXC_RETURN も ES=1 でないと CFSR.INVPC で
- *          HardFault する．
+ *  TrustZone セキュリティ状態に応じて値が変わるため，ターゲット側で
+ *  下記いずれか **必ず** 1 つ define する:
  *
- *  ターゲット側 Makefile.chip / Makefile.target で
- *      -DEXC_RETURN=0xffffffbd
- *  と override すれば Secure state 用の値になる．override しなければ
- *  Non-Secure (0xffffffbc) のまま．`#ifndef` ガードでこれを実現．
+ *    TOPPERS_TZ_NS : Non-Secure 状態で動作 (ES=0, S=0)
+ *                    例: STM32H5 で OFS1.TZEN=0 (TrustZone 無効化) の場合
+ *    TOPPERS_TZ_S  : Secure 状態で動作 (ES=1, S=1)
+ *                    例: RA6M5 + FSP "Flat Non-TrustZone" Project
+ *                    (実際は Full Secure 動作)，または
+ *                    STM32H5 で OFS1.TZEN=1 + Secure ビルド
+ *
+ *  どちらも未定義だと #error．両方定義は禁止．
+ *
+ *  EXC_RETURN[7:0] ビット詳細:
+ *    bit 0 (ES) : Exception Security state — 例外ハンドラ実行時の状態
+ *    bit 2 (Mode): 1=Thread, 0=Handler — pre-exception mode
+ *    bit 3 (SPSEL): 1=PSP, 0=MSP — pre-exception stack
+ *    bit 4 (FType): 1=Basic frame (no FP), 0=Extended (FP)
+ *    bit 5 (DCRS): 1=default callee register stacking
+ *    bit 6 (S)  : Secure state of pre-exception context
+ *    bit 7      : Reserved, must be 1
+ *    bits 31:8  : 0xFFFFFF
+ *
+ *  既定値の選択 (Thread + PSP + No FP + DCRS):
+ *    NS: 0b1011_1100 = 0xBC → 0xFFFFFFBC
+ *    S : 0b1111_1101 = 0xFD → 0xFFFFFFFD
  */
+#if !defined(TOPPERS_TZ_NS) && !defined(TOPPERS_TZ_S)
+#error "Define TOPPERS_TZ_NS or TOPPERS_TZ_S in target Makefile (TrustZone state)."
+#endif
+#if defined(TOPPERS_TZ_NS) && defined(TOPPERS_TZ_S)
+#error "TOPPERS_TZ_NS and TOPPERS_TZ_S are mutually exclusive."
+#endif
+
 #ifndef EXC_RETURN
-#define EXC_RETURN          0xffffffbc  /* Default: ARMv8-M Non-Secure thread + PSP + no FP */
+#if defined(TOPPERS_TZ_S)
+#define EXC_RETURN          0xfffffffd  /* Secure: ES=1, Thread, PSP, no FP, DCRS, S=1 */
+#else /* TOPPERS_TZ_NS */
+#define EXC_RETURN          0xffffffbc  /* Non-Secure: ES=0, Thread, PSP, no FP, DCRS, S=0 */
+#endif
 #endif
 #define EXC_RETURN_PREFIX   0xff000000
 #define EXC_RETURN_THREAD   0x8
