@@ -64,35 +64,50 @@ main からの差分 commit (新しい順):
 
 ### 0-6. Phase 2 の最初に取るアクション
 
-1. **`configuration.xml` を target/ek_ra6m5_llvm/fsp/ にコミット**．`configuration.xml` は Smart Configurator のソース．**初回はユーザが GUI で生成して取得する必要がある**． 取得方法は本ファイル §A (Phase 2-A) 参照．
-2. ユーザから `configuration.xml` を受領 → `target/ek_ra6m5_llvm/fsp/configuration.xml` に commit．
-3. `arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md` の手順に従い `rascc.exe --generate` を実行．これにより `fsp/ra/` `fsp/ra_cfg/` `fsp/ra_gen/` がローカル生成される (gitignore 済)．
-4. Phase 2-B (target 依存部一式) は commit `9c7561e` で骨格完了．INTNO 確定や `vector_data.c` 取扱方式の決定に進む．
+1. **(ユーザ手作業必須・初回のみ)** Smart Configurator GUI で `configuration.xml`
+   を作成し `target/ek_ra6m5_llvm/fsp/configuration.xml` にコミット．
+   詳細は §B 参照．Renesas は CLI でのプロジェクト初期化を提供して
+   おらず，このステップだけは Claude が代行できない．
+2. **(以後 Claude 実行可)** `configuration.xml` がコミット済になったら，
+   Claude に「Phase 2-A §B 完了，§C 以降を引き継いで」と依頼．Claude は
+   Bash で `rascc.exe --generate ... target/ek_ra6m5_llvm/fsp/configuration.xml`
+   を実行し `fsp/ra/` `fsp/ra_cfg/` `fsp/ra_gen/` を生成 (gitignore 済) →
+   Read で `vector_data.c` から INTNO を抽出 → Edit で
+   `target_serial.{h,arxml}` `target_hw_counter.{h,arxml}` の暫定値を
+   実値に置換 → そのまま Phase 3 (`obj/obj_ek_ra6m5/Makefile` 作成 +
+   初回ビルド) に進む．
 
 ### 0-7. 制約・運用ルール
 
 - **共通プロセッサ依存部 `arch/arm_m_gcc/common/` は変更禁止** (CLAUDE.md 開発項目)．LLVM ビルドでも同じソースを vpath で再利用．
 - **コンパイラは ARM LLVM (ATfE 21.1.1)** だけを使う．GCC は H5 移植用にのみ残す．
 - 再度 codex レビューを依頼する場合は `Agent` (subagent_type=`codex:codex-rescue`) を使う．本セッションのレビュー結果は本ブランチ commit `d3bd62b` のメッセージにサマリあり．
-- **`configuration.xml` の初回作成は Smart Configurator GUI 必須** (人間しかできない)．以後の `ra_cfg/` `ra_gen/` 再生成は CLI で完全ヘッドレス化可能 (`rascc.exe --generate configuration.xml`)．`docs/fsp_setup.md` 参照．
+- **`configuration.xml` の初回作成は Smart Configurator GUI 必須** (人間しかできない)．**ただし `rascc --generate` (= `ra/`/`ra_cfg/`/`ra_gen/` 生成) は Claude も Bash で実行可**．Phase 2-A §B (GUI) のみがユーザ手作業必須で，§C 以降は Claude に引き継げる．`docs/fsp_setup.md` 参照．
 - Windows make の高並列度問題があるため `-j` は `4` 以下を推奨．
 - コミットメッセージは日本語．`<area>: <要約>` 形式 (例: `target/ek_ra6m5_llvm: r7fa6m5bh.ld 追加`)．
 - 共著者末尾は `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`．
 
 ---
 
-## ユーザー作業 (Phase 2-A) — `configuration.xml` 取得 + FSP ローカル生成
+## Phase 2-A — `configuration.xml` 取得 + FSP ローカル生成
 
-> **本節はユーザーが手作業で実施する必須タスク**．新方針では下記 2 段階:
+> **本節は §B のみがユーザ手作業必須．§C 以降は Claude Code が
+> Bash/Read/Edit で自動実行できる**．以下が役割分担:
 >
-> 1. **初回のみ**: Smart Configurator GUI で `configuration.xml` を 1 回作成し，
->    `target/ek_ra6m5_llvm/fsp/configuration.xml` にコミットする．
-> 2. **以後**: clone 後ユーザは `rascc.exe --generate` を実行するだけで
->    `fsp/ra/` `fsp/ra_cfg/` `fsp/ra_gen/` がローカル生成される (gitignore 済)．
->    手順は [`arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md`](arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md) を参照．
+> - **§B (ユーザ手作業必須)**: Smart Configurator GUI で `configuration.xml`
+>   を 1 回作成し `target/ek_ra6m5_llvm/fsp/configuration.xml` にコミット．
+>   Renesas は CLI でのプロジェクト初期化を提供しておらず，不完全な
+>   `configuration.xml` を `rascc --generate` に渡しても
+>   `Cannot invoke "...IPath.append(String)"` エラーで失敗する．
+>   **生涯一度のみの作業**．
+> - **§C 以降 (Claude が実行可能)**: `rascc --generate` は単なる CLI なので
+>   Bash 経由で起動可能．生成物の検証・INTNO 抽出・暫定値置換・
+>   `Makefile.target` 修正・vector_data.c 取扱方式の確定 (ビルド試行) も
+>   全て Claude が完結できる．`configuration.xml` がコミット済になったら
+>   Claude にブリーフして引き継がせること．
 >
-> 現状 `target/ek_ra6m5_llvm/fsp/configuration.xml` は **未コミット**．Phase 2-A
-> の最初の作業はこれを生成・取得すること．
+> 現状 `target/ek_ra6m5_llvm/fsp/configuration.xml` は **未コミット**．
+> Phase 2-A の最初の作業 (§B) はユーザがこれを作成・取得すること．
 
 ### A. 前提状態の確認
 
@@ -105,7 +120,7 @@ main からの差分 commit (新しい順):
       e² studio v2025-12 (`C:/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/`)
       がインストール済み
 
-### B. Smart Configurator GUI で `configuration.xml` 作成 (初回のみ)
+### B. Smart Configurator GUI で `configuration.xml` 作成 〔ユーザ手作業必須・初回のみ〕
 
 GUI を **どちらか好きな方** で起動する:
 
@@ -143,10 +158,12 @@ GUI を **どちらか好きな方** で起動する:
    FSP 6.4.0 (sc_v2025-12) 用．Board=EK-RA6M5, R7FA6M5BH3CFC,
    ICLK=200MHz, SCI3+GPT320+GPT321+IOPORT, Flat Non-TrustZone．
    ```
+6. ユーザは Claude に「Phase 2-A §B 完了．§C 以降を引き継いで」と依頼．
+   §I のブリーフテンプレートを使うと過不足ない引継ぎになる．
 
-### C. `rascc --generate` で `ra/` `ra_cfg/` `ra_gen/` を生成
+### C. `rascc --generate` で `ra/` `ra_cfg/` `ra_gen/` を生成 〔Claude 実行可〕
 
-`configuration.xml` がコミットされた後，下記コマンドでローカル生成:
+`configuration.xml` がコミットされた後，Claude が Bash 経由で実行:
 
 ```sh
 "C:/Renesas/RA/sc_v2025-12_fsp_v6.4.0/eclipse/rascc.exe" \
@@ -159,11 +176,17 @@ GUI を **どちらか好きな方** で起動する:
 実行後 `target/ek_ra6m5_llvm/fsp/` 配下に `ra/` `ra_cfg/` `ra_gen/` が新規作成．
 これらは `.gitignore` で除外されているため commit されない．
 
+成功条件:
+- exit code = 0
+- `target/ek_ra6m5_llvm/fsp/ra/fsp/inc/fsp_version.h` が生成される
+- `target/ek_ra6m5_llvm/fsp/ra_cfg/fsp_cfg/bsp/bsp_cfg.h` が生成される
+- `target/ek_ra6m5_llvm/fsp/ra_gen/vector_data.c` が生成される
+
 詳細は [`arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md`](arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md) を参照．
 
-### D. 検証
+### D. 検証 〔Claude 実行可〕
 
-下記が満たされていることを確認:
+Claude は Read / Grep / Bash で確認:
 
 - [ ] `target/ek_ra6m5_llvm/fsp/configuration.xml` が commit されている
 - [ ] `target/ek_ra6m5_llvm/fsp/ra_cfg/fsp_cfg/bsp/bsp_cfg.h` が存在．内部に `BSP_MCU_GROUP_RA6M5` `BSP_MCU_R7FA6M5BH` の `#define`
@@ -171,27 +194,28 @@ GUI を **どちらか好きな方** で起動する:
 - [ ] `target/ek_ra6m5_llvm/fsp/ra/fsp/inc/fsp_version.h` が `FSP_VERSION_MAJOR (6U)` `FSP_VERSION_MINOR (4U)` を定義
 - [ ] `git status target/ek_ra6m5_llvm/fsp/` で `ra/` `ra_cfg/` `ra_gen/` が **untracked にもならない** (gitignore 効果)
 
-### E. INTNO スロット番号の読取り (Claude が引継)
+### E. INTNO スロット番号の読取り 〔Claude 実行可〕
 
-`target/ek_ra6m5_llvm/fsp/ra_gen/vector_data.c` を開き，
-`g_interrupt_event_link_select[]` 配列のインデックスから INTNO を導出:
+`target/ek_ra6m5_llvm/fsp/ra_gen/vector_data.c` を Read /
+Grep で開き，`g_interrupt_event_link_select[]` 配列のインデックスから
+INTNO を導出:
 
 | FSP イベント名 | 配列インデックス N | 対応 INTNO (= N + 16) |
 |---|---|---|
-| `BSP_PRV_VECTOR_EVENT_SCI3_RXI` | (Phase 2-A 後に確定) | (確定) |
-| `BSP_PRV_VECTOR_EVENT_GPT321_OVF` または相当 | (Phase 2-A 後に確定) | (確定) |
+| `BSP_PRV_VECTOR_EVENT_SCI3_RXI` | (§C 実行後に確定) | (確定) |
+| `BSP_PRV_VECTOR_EVENT_GPT321_OVF` または相当 | (§C 実行後に確定) | (確定) |
 
-### F. 後続作業 (Claude が引継) — 引継メモ
+### F. ターゲット依存ソースへの INTNO 反映 〔Claude 実行可〕
 
-`configuration.xml` がコミットされ §C `rascc --generate` が実行済みになったら，
-Claude が下記を反映:
+`configuration.xml` がコミットされ §C `rascc --generate` が実行済みに
+なったら，Claude が Edit で下記を反映:
 
 1. `target/ek_ra6m5_llvm/target_serial.h` の `INTNO_SIO` 暫定値を実値に．
 2. `target/ek_ra6m5_llvm/target_serial.arxml` の `OsIsrInterruptNumber` を実値に．
 3. `target/ek_ra6m5_llvm/target_hw_counter.h` `GPT321_INTNO` を実値に．
 4. `target/ek_ra6m5_llvm/target_hw_counter.arxml` の `OsIsrInterruptNumber` を実値に．
-5. `target/ek_ra6m5_llvm/Makefile.target` に `EK_RA6M5_HAVE_VECTOR_DATA` 等を追加．
-6. `vector_data.c` 取扱方式を (a)/(b)/(c) から確定．Claude が試行順 ((a) → (b) → (c)) でビルド試行．
+5. `vector_data.c` 取扱方式を (a)/(b)/(c) から確定．Claude が試行順
+   ((a) → (b) → (c)) でビルド試行 (Phase 3 着手後)．
 
 ### G. リスクと事前回避
 
