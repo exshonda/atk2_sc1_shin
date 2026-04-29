@@ -62,12 +62,18 @@ R7FA6M5BH のメモリマップ:
 | タブ | 設定 |
 |---|---|
 | **Clocks** | HOCO 20MHz → PLL → ICLK 200MHz, PCLKD = ICLK/2 = 100MHz |
-| **Stacks → New Stack → Driver → Connectivity → r_sci_uart** | SCI7 を選択 |
-| **Stacks → New Stack → Driver → Timers → r_gpt** | GPT320 (32-bit) を選択．Mode=Free Run，1 MHz は target_hw_counter.c 側で対応 |
-| **Stacks → New Stack → Driver → Timers → r_gpt** | GPT321 (32-bit) を選択．Mode=One-Shot |
-| **Stacks → New Stack → Driver → Input → r_ioport** | デフォルトのまま (ボード設定の pin_data を使う) |
+| **Stacks → New Stack → Driver → Connectivity → r_sci_uart** | SCI7 を選択．**Name = `g_uart_log`** (115200bps, 8N1) |
+| **Stacks → New Stack → Driver → Timers → r_gpt** | GPT320 (32-bit, Free Run, Source clock = PCLKD/4)．**Name = `g_timer_freerun`** |
+| **Stacks → New Stack → Driver → Timers → r_gpt** | GPT321 (32-bit, One-Shot, Source clock = PCLKD/4)．**Name = `g_timer_alarm`** |
+| **Stacks → New Stack → Driver → Input → r_ioport** | デフォルトのまま．**Name = `g_ioport`** (target_config.c が `g_ioport_ctrl` / `g_bsp_pin_cfg` を参照) |
 | **Pins** | P614=RXD7 (Arduino D0 = Pin 0), P613=TXD7 (Arduino D1 = Pin 1) が AF (SCI7) になっていることを確認 |
 | **Properties** | (任意) 各モジュールの Interrupt Priority を確認 |
+
+> Stack の **Name** は Smart Configurator 画面右ペインの "Properties" タブ
+> 「Common → Name」で設定する．既定の `g_uart0`, `g_timer0`, ... をそのまま
+> 採用してもビルドは通るが，本ポートでは **用途を表す名前** を採用して
+> `ra_gen/hal_data.{c,h}` のシンボル (`g_uart_log_ctrl`, `g_uart_log_cfg`,
+> `g_timer_freerun_ctrl` …) と target ソースの参照を一貫させる．
 
 `Generate Project Content` をクリック．
 

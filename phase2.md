@@ -142,11 +142,24 @@ GUI を **どちらか好きな方** で起動する:
    - RTOS: **No RTOS**
 2. **`configuration.xml` を開いて構成**:
    - **Clocks**: HOCO 20MHz → PLL → ICLK 200MHz, PCLKD = ICLK/2 = 100MHz
-   - **Stacks → New Stack → Driver → Connectivity → r_sci_uart**: **SCI7** を選択
-   - **Stacks → New Stack → Driver → Timers → r_gpt**: GPT320 (32-bit, Free Run)
-   - **Stacks → New Stack → Driver → Timers → r_gpt**: GPT321 (32-bit, One-Shot)
-   - **Stacks → New Stack → Driver → Input → r_ioport**: デフォルト
-   - **Pins**: P614 = RXD7 (Arduino D0 / Pin 0), P613 = TXD7 (Arduino D1 / Pin 1) を AF (SCI7) に設定
+   - **Stacks (各ドライバの "Name" プロパティを下表のとおり設定)**:
+
+     | カテゴリ | ドライバ | チャネル / モード | **Name (Stack 名)** | 用途 |
+     |---|---|---|---|---|
+     | Connectivity | `r_sci_uart` | **SCI7** | **`g_uart_log`** | ログ出力用シリアル．115200bps, 8N1 |
+     | Timers | `r_gpt` (1) | **GPT320**, 32-bit, Free Run, Source clock = PCLKD/4 | **`g_timer_freerun`** | フリーランニングカウンタ (`MAIN_HW_COUNTER` 現在値読出) |
+     | Timers | `r_gpt` (2) | **GPT321**, 32-bit, One-Shot, Source clock = PCLKD/4 | **`g_timer_alarm`** | ワンショットアラーム (`MAIN_HW_COUNTER` 期限通知) |
+     | Input | `r_ioport` | デフォルト | **`g_ioport`** | GPIO/PFS．`g_bsp_pin_cfg` を `R_IOPORT_Open` に渡す |
+
+     > Stack の **Name** は Smart Configurator 画面右ペインの "Properties" タブ
+     > 「Common → Name」で設定する．既定は `g_uart0`, `g_timer0`, ... のように
+     > インデックスが振られるが，本ポートでは **用途を表す名前** に統一する．
+     > これにより `ra_gen/hal_data.h` で生成されるシンボル (例:
+     > `g_uart_log_ctrl`, `g_uart_log_cfg`, `g_timer_freerun_ctrl` …) と，
+     > `target_config.c` 等が将来 FSP API を呼ぶときの参照名が一貫する．
+     > また `vector_data.c` のイベント名コメントにも反映され，INTNO 抽出が
+     > わかりやすくなる．
+   - **Pins**: P614 = RXD7 (Arduino D0 / Pin 0), P613 = TXD7 (Arduino D1 / Pin 1) を AF (SCI7) に設定．他のピン (LED 用 P006/P004/P008, User SW P009 等) は既定のままで可．
 3. **Generate Project Content** をクリック．
 4. 生成プロジェクト直下の **`configuration.xml` のみを** 本リポジトリにコピー:
    - `<ws>/ek_ra6m5_baseline/configuration.xml` → `target/ek_ra6m5_llvm/fsp/configuration.xml`
