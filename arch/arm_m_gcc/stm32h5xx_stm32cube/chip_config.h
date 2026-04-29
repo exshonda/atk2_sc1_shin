@@ -50,6 +50,20 @@
 #ifndef TOPPERS_CHIP_CONFIG_H
 #define TOPPERS_CHIP_CONFIG_H
 
+/*
+ *  割込み番号に関する定義
+ *  STM32H563ZI: IRQ0〜IRQ131 (例外番号16〜147)
+ */
+#define TMIN_INTNO  UINT_C(16)   /* 最小割込み番号（IRQ0 = 例外番号16） */
+#define TMAX_INTNO  UINT_C(147)  /* 最大割込み番号（IRQ131 = 例外番号147） */
+#define TNUM_INT    UINT_C(132)  /* 割込み番号の個数 */
+
+/*
+ *  割込み優先度ビット幅
+ *  STM32H5xx は 4 ビット優先度 (NVIC IPR は上位 4 ビットのみ実装)．
+ */
+#define TBITW_IPRI  4U
+
 #ifndef TOPPERS_MACRO_ONLY
 
 /*

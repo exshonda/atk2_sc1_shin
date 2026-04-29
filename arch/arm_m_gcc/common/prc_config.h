@@ -70,17 +70,19 @@
 #endif /* FUNCTION_ALIGN_SIZE */
 
 /*
- *  割込み番号に関する定義
- *  STM32H563ZI: IRQ0〜IRQ131 (例外番号16〜147)
+ *  割込み番号と割込み優先度ビット幅は **チップ依存** のため，本層では
+ *  定義しない．チップ依存部 (chip_config.h) で以下を必ず定義すること:
+ *
+ *    TMIN_INTNO  : 最小割込み番号 (Cortex-M ではほぼ常に IRQ0 = 例外 16)
+ *    TMAX_INTNO  : 最大割込み番号 (= IRQ最大番号 + 16)
+ *    TNUM_INT    : 割込み番号の個数 (= TMAX_INTNO - TMIN_INTNO + 1)
+ *    TBITW_IPRI  : NVIC IPR の優先度ビット幅 (Cortex-M33/M85 は通常 4)
+ *
+ *  この prc_config.h は target_config.h → chip_config.h 経由で取込まれ，
+ *  かつ chip_config.h が末尾でこのファイルを include する設計のため，
+ *  ここでは未定義のまま使用すれば良い (下記 VALID_INTNO / INT_IPM /
+ *  EXT_IPM マクロの本体は使用時に展開される)．
  */
-#define TMIN_INTNO  UINT_C(16)   /* 最小割込み番号（IRQ0 = 例外番号16） */
-#define TMAX_INTNO  UINT_C(147)  /* 最大割込み番号（IRQ131 = 例外番号147） */
-#define TNUM_INT    UINT_C(132)  /* 割込み番号の個数 */
-
-/*
- *  割込み優先度ビット幅
- */
-#define TBITW_IPRI  4U           /* STM32H5xxは4ビット優先度 */
 
 /*
  *  エラーフック呼び出しとシャットダウンフック呼び出し

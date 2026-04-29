@@ -194,10 +194,10 @@ ARM Cortex-M33 の優先度ビット幅は 4bit (0x00 〜 0xF0):
 | `DEFAULT_HOOKSTKSZ` | 1024 |
 | `DEFAULT_OSSTKSZ` | 8192 |
 
-`TMIN_INTNO` / `TMAX_INTNO` / `TBITW_IPRI` は
-`arch/arm_m_gcc/common/prc_config.h` の値 (16 / 147 / 4) をそのまま
-使用．RA6M5 は IRQ0..95 (= INTNO 16..111) しか持たないが，これは H5
-の上限 147 に包含されるため `VALID_INTNO` で誤検出は起きない．
+割込み番号の範囲と優先度ビット幅 (`TMIN_INTNO=16`, `TMAX_INTNO=111`,
+`TNUM_INT=96`, `TBITW_IPRI=4`) はチップ層
+`arch/arm_m_llvm/ra_fsp/chip_config.h` で定義される．RA6M5 の ICU
+イベントリンクスロット数 (`BSP_ICU_VECTOR_NUM_ENTRIES = 96`) と一致．
 
 `Makefile.target` で `FPU_USAGE = FPU_LAZYSTACKING` をデフォルトに設定．
 

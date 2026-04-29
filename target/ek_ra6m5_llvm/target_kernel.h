@@ -45,21 +45,9 @@
 /*
  *  プロセッサ共通の定義
  *
- *  TMIN_INTNO / TMAX_INTNO / TBITW_IPRI は arch/arm_m_gcc/common/prc_config.h
- *  で定義される (TMIN_INTNO=16, TMAX_INTNO=147, TBITW_IPRI=4)．
- *
- *  RA6M5 の NVIC スロット数は 96 (BSP_ICU_VECTOR_NUM_ENTRIES) で
- *  IRQ0..IRQ95 → INTNO 16..111 の範囲しか持たないが，prc_config.h は
- *  「arch/arm_m_gcc/common は変更しない」方針のもと変更不可，かつ #ifndef
- *  ガードが無いため target 層からの単純な #undef/#define では上書きできない．
- *
- *  TMAX_INTNO=147 は H5 から流用された上位互換値．VALID_INTNO の範囲外
- *  検出が IRQ95..IRQ131 の範囲で甘くなる (実害なし，Smart Configurator が
- *  IRQ95 を超える値を割り当てない)．Phase 4 で共通部に
- *  `#ifndef TMAX_INTNO` ガードを足す等の改善を別途検討．
- *
- *  TODO[Phase 4]: prc_config.h に TMAX_INTNO の override 機構を入れて
- *                 ここで UINT_C(111) に絞り込む．
+ *  TMIN_INTNO / TMAX_INTNO / TNUM_INT / TBITW_IPRI は
+ *  arch/arm_m_llvm/ra_fsp/chip_config.h で定義される
+ *  (TMIN_INTNO=16, TMAX_INTNO=111, TNUM_INT=96, TBITW_IPRI=4)．
  */
 #include "prc_kernel.h"
 

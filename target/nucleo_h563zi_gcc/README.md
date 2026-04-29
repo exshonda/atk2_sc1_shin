@@ -105,9 +105,10 @@ ARM Cortex-M33 の優先度ビット幅は 4bit (0x00 〜 0xF0):
 | `DEFAULT_ISRSTKSZ` | 1024 |
 | `DEFAULT_HOOKSTKSZ` | 1024 |
 | `DEFAULT_OSSTKSZ` | 8192 |
-| `TBITW_IPRI` | 4 (STM32H5xx の優先度ビット幅) |
-| `TMIN_INTNO` | 16 (IRQ0 = 例外番号 16) |
-| `TMAX_INTNO` | 147 (IRQ131) |
+
+割込み番号の範囲と優先度ビット幅 (`TMIN_INTNO=16`, `TMAX_INTNO=147`,
+`TNUM_INT=132`, `TBITW_IPRI=4`) はチップ層
+`arch/arm_m_gcc/stm32h5xx_stm32cube/chip_config.h` で定義される．
 
 `Makefile.target` で `FPU_USAGE = FPU_LAZYSTACKING` をデフォルトに設定．
 変更可能な値は `arch/arm_m_gcc/common/README.md` の「FPU の利用方法」を

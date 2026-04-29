@@ -130,11 +130,16 @@ ASP3 のディスパッチャ実装に倣い，以下のとおり実装してい
 
 ターゲット依存部 (またはチップ依存部) で以下のマクロを定義する:
 
-| マクロ | 内容 |
-|---|---|
-| `TMIN_INTNO` / `TMAX_INTNO` / `TNUM_INT` | 割込み番号の最小/最大/個数 |
-| `TBITW_IPRI` | 割込み優先度のビット幅 (STM32H5xx は 4) |
-| `INIT_MSP` | 定義時はスタートアップで `MSP` を初期化 |
+| マクロ | 内容 | 定義場所 |
+|---|---|---|
+| `TMIN_INTNO` / `TMAX_INTNO` / `TNUM_INT` | 割込み番号の最小/最大/個数 | チップ層 `chip_config.h` |
+| `TBITW_IPRI` | NVIC IPR の優先度ビット幅 (Cortex-M33 は通常 4) | チップ層 `chip_config.h` |
+| `TOPPERS_TZ_NS` / `TOPPERS_TZ_S` | TrustZone セキュリティ状態 (排他) | ターゲット層 `Makefile.target` の `CDEFS` |
+| `INIT_MSP` | 定義時はスタートアップで `MSP` を初期化 | ターゲット層 `Makefile.target` の `CDEFS` |
+
+pass2 テンプレート側の対応定義 (`INTNO_VALID`, `INTNO_CONTROLLABLE`,
+`TNUM_INTPRI`, `INTNO_CREISR2_VALID`) はチップ層 `chip.tf` で定義する．
+`target.tf` から `prc.tf` より前に取込まなければならない．
 
 ## 8. 主要ファイル一覧
 

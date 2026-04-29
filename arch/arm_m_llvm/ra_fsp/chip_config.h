@@ -55,6 +55,28 @@
 #ifndef TOPPERS_CHIP_CONFIG_H
 #define TOPPERS_CHIP_CONFIG_H
 
+/*
+ *  割込み番号に関する定義
+ *  RA6M5 (R7FA6M5BH): IRQ0〜IRQ95 (例外番号16〜111)
+ *  ICU.IELSR で 96 個のイベントリンクスロットを持つ (BSP_ICU_VECTOR_NUM_ENTRIES)．
+ *  Cortex-M33 NVIC IRQ0..IRQ95 は ICU が任意の RA イベントへ動的に割付ける．
+ *
+ *  注意: RA ファミリの他チップ (RA6M4=96, RA4M2/M3=96, RA6T2=96, RA8M1=128 等)
+ *        ではスロット数が異なる．本チップ層は RA ファミリ汎用だが，現状
+ *        TMAX_INTNO/TNUM_INT は RA6M5/RA6M4/RA4M2/RA6T2 共通の 96 スロット
+ *        前提でハードコードしている．RA8M1 等で広げる必要が出たら
+ *        MCU_GROUP に応じて分岐する．
+ */
+#define TMIN_INTNO  UINT_C(16)   /* 最小割込み番号（IRQ0 = 例外番号16） */
+#define TMAX_INTNO  UINT_C(111)  /* 最大割込み番号（IRQ95 = 例外番号111） */
+#define TNUM_INT    UINT_C(96)   /* 割込み番号の個数 (= ICU IELSR スロット数) */
+
+/*
+ *  割込み優先度ビット幅
+ *  RA6M5 Cortex-M33 NVIC は 4 ビット優先度 (上位 4 ビットのみ実装)．
+ */
+#define TBITW_IPRI  4U
+
 #ifndef TOPPERS_MACRO_ONLY
 
 /*
