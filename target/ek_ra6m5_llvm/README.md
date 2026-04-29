@@ -326,9 +326,10 @@ e² studio は本ターゲットでは **デバッグ目的のみ** に使用す
 
 デバッグ構成で参照する ELF パスは launch ファイル内で
 `${workspace_loc:/${ProjName}}/atk2-sc1` 等の Eclipse 変数を使うのではなく，
-本リポジトリでは **`obj/obj_ek_ra6m5/atk2-sc1`** (絶対パス) を直接指定して
-いる．launch ファイルを開いて `Main` タブの `C/C++ Application` フィールド
-を環境に合わせて編集する必要がある．
+本リポジトリでは **`../../../../obj/obj_ek_ra6m5/atk2-sc1`** (launch ファイル
+からの相対パス) を直接指定している．clone 直後のレイアウトであればそのまま
+動作する．レイアウトを変えた場合のみ launch ファイルを開いて `Main` タブの
+`C/C++ Application` フィールドを編集する．
 
 ### 9.4 シリアル出力の確認
 

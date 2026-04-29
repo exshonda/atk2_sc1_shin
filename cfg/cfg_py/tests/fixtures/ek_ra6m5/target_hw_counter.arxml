@@ -4,8 +4,7 @@
 <!--
   GPT321 オーバーフロー割込みの NVIC スロット番号は Smart Configurator
   (vector_data.c の g_interrupt_event_link_select[]) で決まる．
-  Phase 2-A 完了後，INTNO を実値に置換すること．
-  TODO[Phase 2-A]: GPT321_OVF スロット確定後に INTNO 修正．
+  configuration.xml を変更した場合は本ファイルの INTNO も合わせて更新すること．
 -->
 <AUTOSAR xmlns="http://autosar.org/schema/r4.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://autosar.org/schema/r4.0 AUTOSAR_4-0-3_STRICT.xsd">
 	<AR-PACKAGES>

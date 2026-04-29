@@ -105,11 +105,8 @@ KERNEL_ASMOBJS := $(KERNEL_ASMOBJS)
 #
 #  vector_data.o は **意図的に除外**．FSP 生成 vector_data.c には
 #  g_vector_table[] (ATK2 と衝突) と g_interrupt_event_link_select[]
-#  (必須) が同居するため，丸ごと取込まず target_config.c で IELSR を
-#  設定する設計．Smart Configurator が g_interrupt_event_link_select
-#  を別ファイル化していない場合は Phase 2-B で抽出方式 (a)/リネーム
-#  方式 (b)/リンカ廃棄 (c) を検討．
-#  TODO[Phase 2-A]: ra_gen/vector_data.c の取扱方式を確定．
+#  (必須) が同居するため，丸ごと取込まず target_irq_data.c で IELSR
+#  配列だけ抽出する設計 (Phase 2-B 確定: 抽出方式 (a))．
 #
 KERNEL_COBJS   := $(KERNEL_COBJS) target_config.o target_hw_counter.o \
                   target_irq_data.o \

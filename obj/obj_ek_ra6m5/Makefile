@@ -355,7 +355,9 @@ Os_Lcfg.timestamp: $(APPL_CFG_INPUT) $(START_OBJS) $(OBJDIR)/cfg1_out.o $(END_OB
 	@# ため使えない．`+ 1` 削除のみ可能．
 	@# arch/arm_m_gcc/common/prc.tf を変更しない方針 (CLAUDE.md 開発項目)
 	@# のための target 層側でのワークアラウンド．
-	sed -i -E 's/(\(uint32\)[a-zA-Z_][a-zA-Z0-9_]*) \+ 1,/\1,/g' Os_Lcfg.c
+	@# 末尾は \b (ワード境界) でマッチさせて，最終要素 (kernel_vector_table[]
+	@# の最後の INTNO のようにカンマで終わらないエントリ) も漏れなく置換する．
+	sed -i -E 's/(\(uint32\)[a-zA-Z_][a-zA-Z0-9_]*) \+ 1\b/\1/g' Os_Lcfg.c
 	if ! cmp Os_Cfg.h Os_Cfg_tmp.h >/dev/null 2>&1 ; then \
 		mv Os_Cfg_tmp.h Os_Cfg.h ;\
 	else \

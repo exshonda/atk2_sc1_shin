@@ -5,8 +5,7 @@
   RA6M5 の INTNO は ATK2 共通の規則 (INTNO = NVIC slot N + 16) に従う．
   SCI7_RXI に割り当てられた NVIC スロット番号は Smart Configurator
   (vector_data.c の g_interrupt_event_link_select[] の並び) で決まる．
-  Phase 2-A 完了後，ここの VALUE を実値で置換すること．
-  TODO[Phase 2-A]: SCI7_RXI スロット確定後に INTNO 修正 + target_serial.h と一致させる．
+  configuration.xml を変更した場合は本ファイルの INTNO も合わせて更新すること．
 -->
 <AUTOSAR xmlns="http://autosar.org/schema/r4.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://autosar.org/schema/r4.0 AUTOSAR_4-0-3_STRICT.xsd">
 	<AR-PACKAGES>

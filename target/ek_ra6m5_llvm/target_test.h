@@ -30,7 +30,12 @@
 
 /*
  *  sample1で使用するアラームの周期
- *  タイマクロック1MHz × 1,000,000 = 1秒
+ *
+ *  注: 値 1,000,000 は H5 (1MHz tick) からの流用．
+ *  RA6M5 の MAIN_HW_COUNTER は 25 MHz tick (target_hw_counter.h)
+ *  なので実周期は 1,000,000 / 25 MHz ≈ 40 ms (= 1秒厳守ではない)．
+ *  sample1 の動作確認用周期としては問題ないため値を据置．
+ *  1秒周期に揃えたい場合は 25,000,000 へ変更．
  */
 #define COUNTER_MIN_CYCLE	((uint32) 1000000)
 

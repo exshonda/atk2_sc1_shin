@@ -19,10 +19,10 @@
  *  ハードウェアカウンタのターゲット依存定義（EK_RA6M5_LLVM用）
  *
  *  MAIN_HW_COUNTER:
- *    GPT320: フリーランニング 32bit 上昇カウンタ (1MHz), 現在値タイマ
- *    GPT321: ワンショット 32bit 上昇カウンタ (1MHz), アラームタイマ
- *  PCLKD = 100MHz (Smart Configurator 既定) を Source clock で /100 分周し
- *  1MHz tick とする．GPT は Renesas R_GPT (32-bit GPT for ch0/ch1) を
+ *    GPT320: フリーランニング 32bit 上昇カウンタ (25MHz tick), 現在値タイマ
+ *    GPT321: ワンショット 32bit 上昇カウンタ (25MHz tick), アラームタイマ
+ *  PCLKD = 100MHz (Smart Configurator 既定) を GTCR.TPCS=/4 で 25 MHz tick
+ *  とする (= 40 ns/tick)．GPT は Renesas R_GPT (32-bit GPT for ch0/ch1) を
  *  レジスタ直叩きで使用．
  */
 

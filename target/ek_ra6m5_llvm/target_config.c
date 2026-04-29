@@ -197,7 +197,7 @@ static void sci7_low_init(void)
 /*
  *  SCI7 受信割込みハンドラ (C2ISR)
  *  target_serial.arxml で C2ISR(RxHwSerialInt) として登録．INTNO は
- *  Smart Configurator (vector_data.c) の SCI7_RXI スロットに依存 (TODO)．
+ *  Smart Configurator (vector_data.c) の SCI7_RXI スロットに依存．
  */
 extern void RxSerialInt(uint8 character);
 
@@ -330,9 +330,7 @@ target_hardware_initialize(void)
     SystemInit();
 
     /* (2) IOPORT 初期化．Smart Configurator 生成 g_bsp_pin_cfg を参照する．
-     *     pin_data.c が ra_gen/ に置かれてから有効化．
-     *     TODO[Phase 2-A]: g_bsp_pin_cfg を含む pin_data.c が揃ったら
-     *     #if 1 へ切替 (or #define で制御)．
+     *     EK_RA6M5_USE_FSP_PINCFG は Makefile.target の CDEFS で定義済．
      */
 #if defined(EK_RA6M5_USE_FSP_PINCFG)
     extern const ioport_cfg_t g_bsp_pin_cfg;
@@ -363,14 +361,13 @@ target_initialize(void)
 
     /* (2) RA6M5 ICU.IELSR を Smart Configurator 生成テーブルから設定．
      *     これがないと NVIC スロットに紐づく事象が決まらず割込みが入らない．
-     *     R_BSP_IrqCfgInit 相当の処理 (bsp_irq.c の bsp_irq_cfg) を Phase 2
-     *     では target が肩代わりする (FSP 標準は Reset_Handler 経由で行うが
-     *     ATK2 は start.S を使うため)．
      *
-     *     ループ範囲は BSP_ICU_VECTOR_NUM_ENTRIES (= ra_cfg/.../bsp_irq_cfg
-     *     で定義される)．Smart Configurator 出力が無い段階ではこのコードを
-     *     有効化できないため #if defined(EK_RA6M5_HAVE_VECTOR_DATA) で囲む．
-     *     Phase 2-A 完了時に Makefile.target で同マクロを定義し有効化．
+     *     注: 同じ書込みは FSP の bsp_irq_cfg() (bsp_irq.c) が
+     *     SystemInit() から呼ばれた時点で既に完了している (target_hardware_initialize
+     *     の (1) で SystemInit() を呼ぶ際に経由)．したがって本ループは
+     *     冪等な再書込みであり機能上は省略可能．ATK2 が独自の start.S を
+     *     使うため，FSP 標準の Reset_Handler 経路に依存していないことを
+     *     明示する保険として残している．
      */
 #if defined(EK_RA6M5_HAVE_VECTOR_DATA)
     {

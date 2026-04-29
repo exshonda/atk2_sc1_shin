@@ -316,7 +316,7 @@ target/ek_ra6m5_llvm/
 | `Makefile.target` | TARGET=ek_ra6m5_llvm, CHIP=ra_fsp, MCU_GROUP=ra6m5, FPU_USAGE=FPU_LAZYSTACKING, INCLUDES に `fsp/ra_cfg/` `fsp/ra_gen/` 追加, `KERNEL_COBJS` から `vector_data.o` 除外 (方式 (a) 仮置き), `EK_RA6M5_HAVE_VECTOR_DATA` `EK_RA6M5_USE_FSP_PINCFG` 定義 |
 | `r7fa6m5bh.ld` | Flash 2MB @ 0x00000000, SRAM 512KB @ 0x20000000．`/DISCARD/ : *(.fixed_vectors)` で FSP `__VECTOR_TABLE` を保険破棄 |
 | `ek_ra6m5.h` | `CPU_CLOCK_HZ=200_000_000`, `PCLKD_HZ=100_000_000`, LED1=P006/LED2=P004/LED3=P008, BPS_SETTING=115200 |
-| `target_kernel.h` | スタックサイズ等．TMIN_INTNO/TMAX_INTNO/TBITW_IPRI は `arch/arm_m_gcc/common/prc_config.h` の値 (16/147/4) を流用 (TMAX_INTNO=147 は H5 由来；Phase 4 で 111 への絞り込み TODO) |
+| `target_kernel.h` | スタックサイズ等．TMIN_INTNO/TMAX_INTNO/TBITW_IPRI は `arch/arm_m_gcc/common/prc_config.h` の値 (16/147/4) を流用 (TMAX_INTNO=147 は H5 由来；Phase 4 で 111 への絞り込み TODO)．**※後日**: per-chip 定義は chip 層 (`arch/arm_m_llvm/ra_fsp/chip_config.h` で 16/111/96/4) へ移動済 (Phase 6 リファクタ)． |
 | `target_config.c` | 設計判断 (H): `hardware_init_hook` 空，`target_hardware_initialize` で `SystemInit()` + `R_IOPORT_Open` + SCI7 low-level init + `prc_hardware_initialize`．`target_initialize` で IELSR 設定 + `prc_initialize` |
 | `target_serial.{c,h,arxml}` | SCI7 RX 割込み．INTNO 暫定 16 (★ TODO[Phase 2-A]) |
 | `target_hw_counter.{c,h,arxml}` | GPT320 (Free Run) + GPT321 (One-Shot)．TPCS=DIV4 (= PCLKD/4 = 25 MHz)．INTNO 暫定 18 (★ TODO[Phase 2-A]) |

@@ -40,7 +40,7 @@
 /*
  *  ペリフェラルクロック PCLKD (GPT320/GPT321 のクロック源)
  *    Smart Configurator 既定: ICLK/2 = 100MHz．
- *    1MHz timer tick を作るための分周比は target_hw_counter.h を参照．
+ *    タイマ tick (PCLKD/4 = 25 MHz) の分周比は target_hw_counter.h を参照．
  */
 #define PCLKD_HZ        100000000U
 

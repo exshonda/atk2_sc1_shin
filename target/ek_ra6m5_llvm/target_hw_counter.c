@@ -19,8 +19,8 @@
  *  ハードウェアカウンタ実装（EK_RA6M5_LLVM用）
  *
  *  MAIN_HW_COUNTER:
- *    GPT320: フリーランニング 32bit 上昇カウンタ (1MHz), 現在値タイマ
- *    GPT321: ワンショット 32bit 上昇カウンタ (1MHz), アラームタイマ
+ *    GPT320: フリーランニング 32bit 上昇カウンタ (25MHz tick), 現在値タイマ
+ *    GPT321: ワンショット 32bit 上昇カウンタ (25MHz tick), アラームタイマ
  *
  *  制御方針:
  *    get_hwcounter() → GPT320->GTCNT を直接返す（絶対時間）
@@ -29,14 +29,12 @@
  *    を発生させる
  *
  *  RA6M5 GPT のクロック源は PCLKD．Smart Configurator 既定では 100MHz．
- *  1MHz tick を作るため，本実装では下記レジスタ操作を行う:
- *    GTCR.TPCS = 0  (PCLKD/1) ... ※下記 NOTE 参照
+ *  GPT のプリスケーラ TPCS は {/1, /4, /16, /64, /256, /1024} の 6 値しか
+ *  選べないため，本実装では下記を採用 (詳細は target_hw_counter.h):
+ *    GTCR.TPCS = 1  (PCLKD/4) → 25 MHz tick (= 40 ns/tick)
  *    GTPR (周期)= MAX (= 0xFFFFFFFF) でフリーラン
- *  1MHz 等価で扱うため，PCLKD=100MHz では実質 100tick/us となる．
- *  TIMER_CLOCK_HZ の最終値は target_hw_counter.h の TODO 解決時に決定．
- *
- *  Phase 2 完成時には Phase 2-A の bsp_clock_cfg.h で PCLKD を 100MHz
- *  以外 (例: 50MHz) に切替えるオプションを評価する．
+ *  TIMER_CLOCK_HZ = 25 MHz と target_hw_counter.arxml の OsSecondsPerTick
+ *  (4.0e-08) を整合させる．
  */
 
 #include "Os.h"
