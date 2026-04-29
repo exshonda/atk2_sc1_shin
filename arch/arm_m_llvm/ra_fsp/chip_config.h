@@ -44,7 +44,10 @@
  */
 
 /*
- *  チップ依存モジュール（RA6M5 FSP用）
+ *  チップ依存モジュール (RA + Renesas FSP 共通; Cortex-M33 系)
+ *
+ *  対応 RA ファミリ: RA4M2/M3, RA4E1/E2, RA6M4/M5, RA6T2 等．
+ *  個別チップは Makefile.target 側の MCU_GROUP / CORE_CPU 変数で選択する．
  *
  *  このインクルードファイルは target_config.h からインクルードされる
  */
@@ -57,10 +60,10 @@
 /*
  *  Renesas FSP の BSP API をインクルード
  *
- *  bsp_api.h は CMSIS デバイスヘッダ (R7FA6M5BH.h) と
- *  チップ機能定義 (bsp_feature.h, bsp_peripheral.h) を取り込む．
- *  実際の bsp_cfg.h / bsp_clock_cfg.h は Smart Configurator が
- *  生成する ra_cfg/ 以下に置かれる．
+ *  bsp_api.h は CMSIS デバイスヘッダ (R7FA<MCU>.h．例: R7FA6M5BH.h,
+ *  R7FA6M4AF.h) とチップ機能定義 (bsp_feature.h, bsp_peripheral.h) を
+ *  取り込む．実際の bsp_cfg.h / bsp_clock_cfg.h は Smart Configurator
+ *  が生成する target/<TARGET>/fsp/ra_cfg/ 以下に置かれる．
  */
 #include "bsp_api.h"
 

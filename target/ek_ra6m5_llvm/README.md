@@ -17,6 +17,8 @@ TOPPERS/ATK2 (SC1) の **Renesas EK-RA6M5 Evaluation Kit** ボード向け
 
 ## 1. 構成
 
+### 1.1 層構造
+
 | 層 | パス | 役割 |
 |---|---|---|
 | **ターゲット (本層)** | `target/ek_ra6m5_llvm/` | EK-RA6M5 ボード固有 |
@@ -24,6 +26,22 @@ TOPPERS/ATK2 (SC1) の **Renesas EK-RA6M5 Evaluation Kit** ボード向け
 | プロセッサ依存部 (LLVM 用 Makefile) | `arch/arm_m_llvm/common/` | ARM LLVM (ATfE) 用ビルド設定 |
 | プロセッサ依存部 (ソース) | `arch/arm_m_gcc/common/` | start.S, prc_config.{c,h}, prc_support.S 等．LLVM ビルドからは vpath で参照 (untouched) |
 | AUTOSAR Compiler 抽象 (LLVM ブリッジ) | `arch/llvm/` | Compiler.h, Compiler_Cfg.h．`arch/gcc/` を取込 (clang は GCC 互換属性を受け入れる) |
+
+### 1.2 本層内のファイル区分 (committed vs Smart Configurator 生成)
+
+`target/ek_ra6m5_llvm/` 直下は **ATK2 ターゲット依存ソース (committed)**，
+`target/ek_ra6m5_llvm/fsp/` 配下は **Renesas FSP 関連 (大半が
+gitignore)** という明確な境界がある．
+
+| 範囲 | committed | gitignored | 備考 |
+|---|---|---|---|
+| `target/ek_ra6m5_llvm/{Makefile.target, target_*.{c,h}, *.arxml, *.tf, ek_ra6m5.h, r7fa6m5bh.ld, README.md}` | ✓ | | ATK2 開発者が手書きするコード．本層の主体． |
+| `target/ek_ra6m5_llvm/fsp/configuration.xml` | ✓ | | Smart Configurator のソース (真値)．**fsp/ 配下で唯一の committed**．ユーザが GUI で編集→上書き保存． |
+| `target/ek_ra6m5_llvm/fsp/ra/`, `ra_cfg/`, `ra_gen/` | | ✓ | rascc --generate が出力．configuration.xml から完全再生成可能なので commit 不要． |
+| `target/ek_ra6m5_llvm/fsp/{CMakeLists.txt, Config.cmake, cmake/, *.lld, script/, src/, .secure_*, .theia/, *.code-workspace, ...}` | | ✓ | rasc.exe in-place 生成プロジェクトの IDE/CMake/LLD 副生成物．ATK2 ビルドは使わない． |
+
+つまり `git status target/ek_ra6m5_llvm/fsp/` は **`configuration.xml` 以外
+何も表示されない** のが期待状態．
 
 ## 2. メモリマップ
 
