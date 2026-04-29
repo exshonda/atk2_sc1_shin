@@ -8,6 +8,29 @@ TOPPERS/ATK2 (AUTOSAR Kernel Version 2, SC1) ported from the original Nios2 dist
 
 User-facing documentation (Japanese) is in [README.md](README.md), [arch/arm_m_gcc/common/README.md](arch/arm_m_gcc/common/README.md), [arch/arm_m_gcc/stm32h5xx_stm32cube/README.md](arch/arm_m_gcc/stm32h5xx_stm32cube/README.md), [target/nucleo_h563zi_gcc/README.md](target/nucleo_h563zi_gcc/README.md), and [cfg/cfg_py/README.md](cfg/cfg_py/README.md). Read those before guessing. Source-level docs in `doc/` describe the original ATK2 SC1 kernel.
 
+## Toolchain paths (Windows / MSYS2 bash)
+
+`make` and ATfE clang are **not on the default `PATH`** in this environment.
+Locations (all use forward-slash MSYS-style for bash):
+
+| Tool | Path | Used for |
+|---|---|---|
+| GNU Make 4.4 | `/c/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/eclipse/plugins/com.renesas.ide.exttools.gnumake.win32.x86_64_4.3.1.v20240909-0854/mk/make.exe` | Both targets |
+| `arm-none-eabi-gcc` 13.x | `/c/SW/ST/STM32CubeCLT_1.18.0/GNU-tools-for-STM32/bin/` (already on `PATH`) | NUCLEO-H563ZI |
+| ATfE 21.1.1 (`clang.exe`) | `/c/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/toolchains/llvm_arm/ATfE-21.1.1-Windows-x86_64/bin/` | EK-RA6M5 |
+| `rascc.exe` (FSP generator) | `/c/Renesas/RA/sc_v2025-12_fsp_v6.4.0/eclipse/rascc.exe` | EK-RA6M5 (one-shot, post-clone) |
+| J-Link CLI | `/c/Program Files/SEGGER/JLink_V920/JLink.exe` (already on `PATH`) | EK-RA6M5 flashing |
+
+One-liner to set up the shell for an EK-RA6M5 build:
+
+```sh
+MAKE='/c/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/eclipse/plugins/com.renesas.ide.exttools.gnumake.win32.x86_64_4.3.1.v20240909-0854/mk/make.exe'
+export PATH="/c/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/toolchains/llvm_arm/ATfE-21.1.1-Windows-x86_64/bin:$PATH"
+cd obj/obj_ek_ra6m5 && "$MAKE" -j4
+```
+
+The H5 build only needs `MAKE` (`arm-none-eabi-gcc` is already on `PATH`).
+
 ## Common commands
 
 All builds happen from the per-target build directory, **not** the repo root.
