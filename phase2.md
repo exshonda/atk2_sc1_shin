@@ -106,6 +106,39 @@ e² studio v2025-12 の新規プロジェクトウィザードを起動．
   > これにより `ra_gen/hal_data.{c,h}` のシンボル (`g_uart_log_ctrl`,
   > `g_timer_freerun_ctrl` …) と target ソースの参照が一貫する．
 
+  **★ Interrupt Priority の設定 (★ 必須．抜けると `g_interrupt_event_link_select[]`
+  が空配列になり IELSR 設定不能)**
+
+  各モジュールを Stacks タブで選択した状態で，画面右ペインの **"Properties"
+  タブ → "Interrupts"** カテゴリを開き，下表の Priority を設定する．
+  Priority は 0 (最高) 〜 15 (最低)．未設定 (`Disabled`) のままだと
+  Smart Configurator はそのモジュール用の NVIC スロットを確保せず，
+  `ra_gen/vector_data.c` の `g_interrupt_event_link_select[]` には何も
+  追加されない (= IELSR が空のまま = 割込み入らない)．
+
+  | モジュール (Name) | Properties → Interrupts | Priority |
+  |---|---|---|
+  | `g_uart_log` (SCI7) | `Receive Interrupt Priority` (RXI)        | **2** |
+  | `g_uart_log` (SCI7) | `Transmit Data Empty Interrupt Priority` (TXI) | Disabled (送信はポーリング) |
+  | `g_uart_log` (SCI7) | `Transmit End Interrupt Priority` (TEI)   | Disabled |
+  | `g_uart_log` (SCI7) | `Error Interrupt Priority` (ERI)          | Disabled |
+  | `g_timer_freerun` (GPT320) | `Overflow/Crest Interrupt Priority` | Disabled (フリーラン読み取り専用) |
+  | `g_timer_freerun` (GPT320) | その他 (`Capture A/B`, `Underflow/Trough`) | Disabled |
+  | `g_timer_alarm` (GPT321) | `Overflow/Crest Interrupt Priority`  | **1** |
+  | `g_timer_alarm` (GPT321) | その他                                | Disabled |
+  | `g_ioport` | (割込み無し)                                       | — |
+
+  > 設計判断 (G) との対応:
+  > - GPT321 OVF Priority=1 → ATK2 INTPRI=1 (HW counter alarm，最高)．
+  > - SCI7 RXI  Priority=2 → ATK2 INTPRI=2 (ログ受信)．
+  > - `tmin_basepri = 0x10` の制約により Priority 0 は **使用しない**
+  >   (= ATK2 OS 割込み禁止より上位扱いで C2ISR 不可)．
+
+  Priority を設定すると右ペイン下部または `configuration.xml` 保存時に
+  対応する NVIC スロットが自動割当される．スロット番号は §C-4 の
+  `rascc --generate` 後に `ra_gen/vector_data.c` の
+  `g_interrupt_event_link_select[]` から読み取る (§E)．
+
 - **Pins タブ**: P614=RXD7 (Arduino D0 / Pin 0), P613=TXD7 (Arduino D1 /
   Pin 1) を AF (SCI7) に設定．他は既定のまま．
 
@@ -246,6 +279,7 @@ Read / Grep / Bash で確認:
 | `BSP_MCU_GROUP_RA6M5` が定義されない | Board 選択漏れ | プロジェクト再生成 |
 | `BSP_TZ_NONSECURE_BUILD` が定義されている | TrustZone を選んだ | Flat (Non-TrustZone) で再生成 |
 | `g_interrupt_event_link_select[]` が `bsp_irq.c` の弱定義 (全 0) にフォールバック | `vector_data.c` 全除外で IELSR テーブルが消失 | 上記「設計判断 残課題」(a)/(b)/(c) を必ず確定 |
+| `ra_gen/vector_data.c` の `g_interrupt_event_link_select[]` が **空配列** で生成される | §B-2 で各モジュールの **Properties → Interrupts → Priority** を設定し忘れた (Disabled のまま) | rasc.exe を再度開き，`g_uart_log` の RXI=2，`g_timer_alarm` の Overflow=1 を設定して Save → Claude が `rascc --generate` 再実行 |
 
 ### H. ユーザが §B 完了時に Claude に渡すブリーフ (テンプレート)
 
