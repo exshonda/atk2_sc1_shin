@@ -53,6 +53,9 @@ target/*/fsp/ra/
 target/*/fsp/ra_cfg/
 target/*/fsp/ra_gen/
 
+# rasc 生成のテキスト報告 (configuration.xml の人間可読版)
+target/*/fsp/ra_cfg.txt
+
 # rasc.exe / e² studio が in-place 生成する IDE/CMake/LLD 副生成物
 target/*/fsp/.api_xml
 target/*/fsp/.secure_azone
