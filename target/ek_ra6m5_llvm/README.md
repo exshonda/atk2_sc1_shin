@@ -38,26 +38,35 @@ R7FA6M5BH のメモリマップ:
 リンカスクリプト: [`r7fa6m5bh.ld`](r7fa6m5bh.ld)．SRAM 末尾 (`_estack`)
 を初期 MSP として使用．
 
-## 3. Smart Configurator による baseline 生成 (Phase 2-A 手順)
+## 3. Smart Configurator による baseline 生成 (Phase 2-A §B 手順)
 
-本層は Smart Configurator が生成する `ra_cfg/` `ra_gen/`
-`configuration.xml` に依存する．以下の手順で生成し，本ディレクトリに
-コピーすること．
+本層は Smart Configurator が生成する `fsp/configuration.xml` を真値として
+コミットし，clone 後ユーザが `rascc --generate` で `fsp/ra/`, `fsp/ra_cfg/`,
+`fsp/ra_gen/` をローカル生成する設計．以下は configuration.xml の **初回**
+作成手順 (生涯一度)．**in-place 方式** = 最初から
+`target/ek_ra6m5_llvm/fsp/` をプロジェクトディレクトリに指定する．コピー
+作業不要．以後の Stack 追加等の変更は同じ場所を rasc で開いて edit する
+だけで完結する．
 
-### 3.1 e² studio で新規プロジェクト作成
+### 3.1 rasc.exe / e² studio で新規プロジェクト作成 (in-place)
 
-1. e² studio (2025-07 以降) を起動．`File → New → C/C++ Project →
-   Renesas RA C/C++ Project`．
-2. **Project Name**: 任意 (例: `ek_ra6m5_baseline`)．生成元としてのみ使用．
-3. **Board**: `EK-RA6M5`．
-4. **Toolchain**: `ARM LLVM (ATfE)`．
-5. **Device**: `R7FA6M5BH3CFC`．
-6. **Project Type**: `Flat (Non-TrustZone) Project`．
-7. **Build Artifact / RTOS**: `No RTOS`．
+1. `rasc.exe` (推奨．`C:/Renesas/RA/sc_v2025-12_fsp_v6.4.0/eclipse/rasc.exe`)
+   または e² studio v2025-12 を起動．
+2. `File → New → Renesas C/C++ Project → Renesas RA`．
+3. **Project location**: `Use default location` のチェックを **外し**，
+   `Browse` で本リポジトリの `target/ek_ra6m5_llvm/` を選択．
+4. **Project name**: `fsp` (これにより `target/ek_ra6m5_llvm/fsp/` が
+   新規作成される．configuration.xml も最終的にここに配置される)．
+5. **Board**: `EK-RA6M5`．
+6. **Toolchain**: `LLVM Embedded Toolchain for Arm (ATfE)`．
+7. **Device**: `R7FA6M5BH3CFC`．
+8. **Project Type**: `Flat (Non-TrustZone) Project`．
+9. **Build Artifact / RTOS**: `No RTOS`．
 
 ### 3.2 Smart Configurator で構成
 
-`configuration.xml` を開いて以下を設定:
+`target/ek_ra6m5_llvm/fsp/configuration.xml` が生成されるので，これを
+開いて以下を設定:
 
 | タブ | 設定 |
 |---|---|
@@ -77,16 +86,33 @@ R7FA6M5BH のメモリマップ:
 
 `Generate Project Content` をクリック．
 
-### 3.3 生成物のコピー
+### 3.3 commit (configuration.xml のみ)
 
-生成プロジェクトのワークスペースから以下を本層にコピー:
+`Generate Project Content` 実行後，`target/ek_ra6m5_llvm/fsp/` 配下に
+configuration.xml + ra/ + ra_cfg/ + ra_gen/ + 各種 IDE/CMake 副生成物
+(CMakeLists.txt, Config.cmake, .secure_*, .theia/, *.lld, src/hal_entry.c
+等) が出力される．**configuration.xml 以外は全て `.gitignore` で除外
+されている**．
 
-| 元 | 先 |
-|---|---|
-| `<workspace>/ek_ra6m5_baseline/ra_cfg/` 全体 | `target/ek_ra6m5_llvm/fsp/ra_cfg/` |
-| `<workspace>/ek_ra6m5_baseline/ra_gen/` 全体 | `target/ek_ra6m5_llvm/fsp/ra_gen/` |
-| `<workspace>/ek_ra6m5_baseline/configuration.xml` | `target/ek_ra6m5_llvm/fsp/configuration.xml` |
-| `<workspace>/ek_ra6m5_baseline/script/fsp.ld` | (参考のみ．`r7fa6m5bh.ld` のベースとして検討) |
+```sh
+git status target/ek_ra6m5_llvm/fsp/
+# → configuration.xml のみが untracked として表示される
+git add target/ek_ra6m5_llvm/fsp/configuration.xml
+git commit -m "target/ek_ra6m5_llvm: configuration.xml 追加 (Smart Configurator baseline)"
+```
+
+> もし `configuration.xml` 以外の untracked ファイルが現れた場合は
+> `.gitignore` のパターンが古い可能性．**そのまま add せず**，差分を
+> 確認すること．
+
+### 3.4 後日のドライバ追加・構成変更
+
+configuration.xml がコミット済 + ローカルの `fsp/ra/` 等が rascc 生成済
+の状態であれば，rasc.exe / e² studio で **`target/ek_ra6m5_llvm/fsp/`
+プロジェクトを `Open Project` で開き直す** だけで Stacks/Pins 編集が
+できる．`Generate Project Content` で in-place 再生成．
+
+外部ワークスペースに別プロジェクトを作って差分コピーする必要はない．
 
 ### 3.4 確定すべき値
 

@@ -39,13 +39,45 @@ cfg/cfg/
 
 # ---------------------------------------------------------------------
 # Renesas FSP / Smart Configurator 生成物 (本リポジトリには非同梱)
-# arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md の手順でユーザがローカル生成．
-# `rascc --generate target/<TARGET>/fsp/configuration.xml` の出力先．
-# configuration.xml は committed (ベンダ仕様の真値ソース)．
+#
+# rasc.exe で target/<TARGET>/fsp/ を Project location にして in-place
+# プロジェクトを作ると，configuration.xml 以外に大量の副生成物 (FSP 本体・
+# IDE プロジェクト・CMake/LLD ビルド用ファイル・サンプルアプリ) が同
+# ディレクトリに出力される．これらは全て `rascc --generate` で再生成可能
+# のため commit しない．configuration.xml だけをベンダ真値として commit．
+#
+# 詳細手順: arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md
 # ---------------------------------------------------------------------
+# rascc --generate 出力 (FSP 本体)
 target/*/fsp/ra/
 target/*/fsp/ra_cfg/
 target/*/fsp/ra_gen/
+
+# rasc.exe / e² studio が in-place 生成する IDE/CMake/LLD 副生成物
+target/*/fsp/.api_xml
+target/*/fsp/.secure_azone
+target/*/fsp/.secure_rzone
+target/*/fsp/.secure_xml
+target/*/fsp/.theia/
+target/*/fsp/.settings/
+target/*/fsp/.vscode/
+target/*/fsp/.cproject
+target/*/fsp/.project
+target/*/fsp/.devicepartmanager/
+target/*/fsp/CMakeLists.txt
+target/*/fsp/Config.cmake
+target/*/fsp/cmake/
+target/*/fsp/README.md
+target/*/fsp/bsp_linker_info.h
+target/*/fsp/*.code-workspace
+target/*/fsp/*.lld
+target/*/fsp/script/
+target/*/fsp/src/
+target/*/fsp/Debug/
+target/*/fsp/Release/
+
+# 残しておくのは configuration.xml だけ — それ以外で目的不明な untracked
+# ファイルが出たら add せずに上記 .gitignore に追加する．
 
 # ---------------------------------------------------------------------
 # ATK2 cfg ツール (C++ 版 / Python 版 共通) の生成物

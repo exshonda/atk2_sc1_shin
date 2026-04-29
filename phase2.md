@@ -122,6 +122,11 @@ main からの差分 commit (新しい順):
 
 ### B. Smart Configurator GUI で `configuration.xml` 作成 〔ユーザ手作業必須・初回のみ〕
 
+> **方針: in-place 作成** — Smart Configurator のプロジェクト作成先を
+> `target/ek_ra6m5_llvm/fsp/` に直接指定する．configuration.xml は最初から
+> 正しい位置に生成され，**コピー作業が不要**．以後のドライバ追加等の
+> 修正は同じプロジェクトディレクトリを開いて edit するだけで完結する．
+
 GUI を **どちらか好きな方** で起動する:
 
 - **B-1 (推奨・軽量)**: `rasc.exe` standalone
@@ -129,50 +134,83 @@ GUI を **どちらか好きな方** で起動する:
 - **B-2**: e² studio v2025-12 経由
   - メニュー: `File → New → C/C++ Project → Renesas RA C/C++ Project`
 
-設定値:
+#### B-1. 新規プロジェクト作成 (in-place)
 
 1. **新規プロジェクト ウィザード**:
-   - Project Name: `ek_ra6m5_baseline` (任意．**`configuration.xml` 生成元としてのみ使用**)
-   - Board: **EK-RA6M5**
-   - Toolchain: **LLVM Embedded Toolchain for Arm (ATfE)** (本ポートは ARM LLVM)．
-     なお Toolchain はあくまで configuration.xml 内のメタ情報．rascc が後で
-     `--compiler LLVMARM` で再生成するので暫定で OK．GCC でも可．
-   - Device: **R7FA6M5BH3CFC**
-   - Project Type: **Flat (Non-TrustZone) Project**
-   - RTOS: **No RTOS**
-2. **`configuration.xml` を開いて構成**:
-   - **Clocks**: HOCO 20MHz → PLL → ICLK 200MHz, PCLKD = ICLK/2 = 100MHz
-   - **Stacks (各ドライバの "Name" プロパティを下表のとおり設定)**:
+   - **Project location**: 親ディレクトリを `target/ek_ra6m5_llvm/` に指定
+     - rasc.exe / e² studio とも "Use default location" のチェックは外し，
+       `Browse` で本リポジトリの `target/ek_ra6m5_llvm/` を選択
+   - **Project name**: **`fsp`** (= 親ディレクトリ直下に `fsp/` サブディレクトリが
+     新規作成され，その中に configuration.xml 等が配置される)
+     - 結果: `target/ek_ra6m5_llvm/fsp/configuration.xml` に最終的に到達
+   - **Board**: `EK-RA6M5`
+   - **Toolchain**: `LLVM Embedded Toolchain for Arm (ATfE)`
+     (= rascc の `--compiler LLVMARM` 値と整合．GCC を選んでも `rascc --generate
+     --compiler LLVMARM` で上書き再生成できるが，最初から LLVM を選ぶのが
+     混乱がない)
+   - **Device**: `R7FA6M5BH3CFC`
+   - **Project Type**: `Flat (Non-TrustZone) Project`
+   - **RTOS**: `No RTOS`
 
-     | カテゴリ | ドライバ | チャネル / モード | **Name (Stack 名)** | 用途 |
-     |---|---|---|---|---|
-     | Connectivity | `r_sci_uart` | **SCI7** | **`g_uart_log`** | ログ出力用シリアル．115200bps, 8N1 |
-     | Timers | `r_gpt` (1) | **GPT320**, 32-bit, Free Run, Source clock = PCLKD/4 | **`g_timer_freerun`** | フリーランニングカウンタ (`MAIN_HW_COUNTER` 現在値読出) |
-     | Timers | `r_gpt` (2) | **GPT321**, 32-bit, One-Shot, Source clock = PCLKD/4 | **`g_timer_alarm`** | ワンショットアラーム (`MAIN_HW_COUNTER` 期限通知) |
-     | Input | `r_ioport` | デフォルト | **`g_ioport`** | GPIO/PFS．`g_bsp_pin_cfg` を `R_IOPORT_Open` に渡す |
+#### B-2. configuration.xml の構成
 
-     > Stack の **Name** は Smart Configurator 画面右ペインの "Properties" タブ
-     > 「Common → Name」で設定する．既定は `g_uart0`, `g_timer0`, ... のように
-     > インデックスが振られるが，本ポートでは **用途を表す名前** に統一する．
-     > これにより `ra_gen/hal_data.h` で生成されるシンボル (例:
-     > `g_uart_log_ctrl`, `g_uart_log_cfg`, `g_timer_freerun_ctrl` …) と，
-     > `target_config.c` 等が将来 FSP API を呼ぶときの参照名が一貫する．
-     > また `vector_data.c` のイベント名コメントにも反映され，INTNO 抽出が
-     > わかりやすくなる．
-   - **Pins**: P614 = RXD7 (Arduino D0 / Pin 0), P613 = TXD7 (Arduino D1 / Pin 1) を AF (SCI7) に設定．他のピン (LED 用 P006/P004/P008, User SW P009 等) は既定のままで可．
-3. **Generate Project Content** をクリック．
-4. 生成プロジェクト直下の **`configuration.xml` のみを** 本リポジトリにコピー:
-   - `<ws>/ek_ra6m5_baseline/configuration.xml` → `target/ek_ra6m5_llvm/fsp/configuration.xml`
-   - **`ra/` `ra_cfg/` `ra_gen/` はコピーしない** (gitignore 対象)．
-5. `git add target/ek_ra6m5_llvm/fsp/configuration.xml` してコミット．推奨メッセージ:
+`target/ek_ra6m5_llvm/fsp/configuration.xml` が生成されるので，rasc/e² studio
+で開いて以下を設定:
+
+- **Clocks タブ**: HOCO 20MHz → PLL → ICLK 200MHz, PCLKD = ICLK/2 = 100MHz
+- **Stacks タブ** (各ドライバの "Name" プロパティを下表のとおり設定):
+
+  | カテゴリ | ドライバ | チャネル / モード | **Name (Stack 名)** | 用途 |
+  |---|---|---|---|---|
+  | Connectivity | `r_sci_uart` | **SCI7** | **`g_uart_log`** | ログ出力用シリアル．115200bps, 8N1 |
+  | Timers | `r_gpt` (1) | **GPT320**, 32-bit, Free Run, Source clock = PCLKD/4 | **`g_timer_freerun`** | フリーランニングカウンタ (`MAIN_HW_COUNTER` 現在値読出) |
+  | Timers | `r_gpt` (2) | **GPT321**, 32-bit, One-Shot, Source clock = PCLKD/4 | **`g_timer_alarm`** | ワンショットアラーム (`MAIN_HW_COUNTER` 期限通知) |
+  | Input | `r_ioport` | デフォルト | **`g_ioport`** | GPIO/PFS．`g_bsp_pin_cfg` を `R_IOPORT_Open` に渡す |
+
+  > Stack の **Name** は Smart Configurator 画面右ペインの "Properties" タブ
+  > 「Common → Name」で設定する．既定は `g_uart0`, `g_timer0`, ... の
+  > インデックス採番だが，本ポートでは **用途を表す名前** で統一する．
+  > これにより `ra_gen/hal_data.h` のシンボル (例: `g_uart_log_ctrl`,
+  > `g_timer_freerun_ctrl`) と target ソースの参照が一貫する．
+  > `vector_data.c` のイベント名コメントにも反映され INTNO 抽出が容易．
+
+- **Pins タブ**: P614=RXD7 (Arduino D0 / Pin 0), P613=TXD7 (Arduino D1 / Pin 1)
+  を AF (SCI7) に設定．他のピン (LED P006/P004/P008, User SW P009 等) は
+  既定のまま．
+
+#### B-3. Generate と commit
+
+1. **Generate Project Content** をクリック．`target/ek_ra6m5_llvm/fsp/`
+   配下に `ra/`, `ra_cfg/`, `ra_gen/`, `configuration.xml`，および IDE/
+   CMake 用の副生成物 (`CMakeLists.txt`, `Config.cmake`, `cmake/`,
+   `.theia/`, `.secure_*`, `bsp_linker_info.h`, `*.lld`, `script/`,
+   `src/hal_entry.c`, `src/hal_warmstart.c`, `*.code-workspace` 等) が
+   出力される．
+2. `git status target/ek_ra6m5_llvm/fsp/` で **`configuration.xml` のみが
+   untracked** として現れることを確認．他は `.gitignore` で除外されている．
+   - もし副生成物が untracked として現れる場合は `.gitignore` のパターンに
+     抜けがある可能性．**追加で commit せず**，Claude に相談する．
+3. `git add target/ek_ra6m5_llvm/fsp/configuration.xml` してコミット．
+   推奨メッセージ:
    ```
    target/ek_ra6m5_llvm: configuration.xml 追加 (Smart Configurator baseline)
 
    FSP 6.4.0 (sc_v2025-12) 用．Board=EK-RA6M5, R7FA6M5BH3CFC,
-   ICLK=200MHz, SCI7+GPT320+GPT321+IOPORT, Flat Non-TrustZone．
+   ICLK=200MHz, SCI7 (g_uart_log), GPT320 (g_timer_freerun),
+   GPT321 (g_timer_alarm), IOPORT (g_ioport), Flat Non-TrustZone．
    ```
-6. ユーザは Claude に「Phase 2-A §B 完了．§C 以降を引き継いで」と依頼．
+4. ユーザは Claude に「Phase 2-A §B 完了．§C 以降を引き継いで」と依頼．
    §I のブリーフテンプレートを使うと過不足ない引継ぎになる．
+
+#### B-4. 後日のドライバ追加・構成変更
+
+`target/ek_ra6m5_llvm/fsp/configuration.xml` がコミット済み + ローカル
+で `target/ek_ra6m5_llvm/fsp/ra/` 等が rascc 生成済み (§C 完了済) の状態
+であれば，rasc.exe / e² studio で `target/ek_ra6m5_llvm/fsp/` プロジェクト
+を `Open Project` で開き直すだけで，Stacks/Pins 編集 → Generate Project
+Content で in-place 再生成できる．
+
+外部ワークスペースに別プロジェクトを作って差分コピーする必要は無い．
 
 ### C. `rascc --generate` で `ra/` `ra_cfg/` `ra_gen/` を生成 〔Claude 実行可〕
 
