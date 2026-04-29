@@ -109,11 +109,16 @@ e² studio v2025-12 の新規プロジェクトウィザードを起動．
 - **Pins タブ**: P614=RXD7 (Arduino D0 / Pin 0), P613=TXD7 (Arduino D1 /
   Pin 1) を AF (SCI7) に設定．他は既定のまま．
 
-設定が完了したら **`Generate Project Content` をクリック** して保存．
-これで `target/ek_ra6m5_llvm/fsp/configuration.xml` がディスクに書き出さ
-れる．**ユーザの GUI 作業はここまで**．rasc/e² studio を閉じて Claude に
-**「Phase 2-A §B 完了．§C 以降を引き継いで」** と通知する．git 操作・
-CLI 操作は不要．
+設定が完了したら **`File → Save` (Ctrl+S)** で `configuration.xml` を
+保存．`Generate Project Content` を **クリックする必要は無い** —
+`ra/` `ra_cfg/` `ra_gen/` の生成は Claude が §C-4 で `rascc --generate`
+で実行する．**ユーザの GUI 作業はここまで**．rasc/e² studio を閉じて
+Claude に **「Phase 2-A §B 完了．§C 以降を引き継いで」** と通知．
+git 操作・CLI 操作は不要．
+
+> Generate Project Content をクリックしても害はない (= IDE/CMake 副
+> 生成物も全て gitignore 済) が，余計な処理時間がかかるだけ．Save 一発
+> で十分．
 
 #### B-3. 後日のドライバ追加・構成変更
 
@@ -167,12 +172,11 @@ ICLK=200MHz, SCI7 (g_uart_log), GPT320 (g_timer_freerun),
 GPT321 (g_timer_alarm), IOPORT (g_ioport), Flat Non-TrustZone．"
 ```
 
-#### C-4. `rascc --generate` 実行 (必要時)
+#### C-4. `rascc --generate` 実行
 
-§B-2 で `Generate Project Content` をクリック済みなら `fsp/ra/`
-`fsp/ra_cfg/` `fsp/ra_gen/` は既に存在する → §C-4 はスキップ可．
-
-別 clone・configuration.xml 更新後・CI 等で再生成が必要なときに:
+`fsp/ra/` `fsp/ra_cfg/` `fsp/ra_gen/` を生成．ユーザは `File → Save` だけ
+で configuration.xml を保存している前提なので，Claude は **必ず本コマンド
+を実行**する．
 
 ```sh
 "C:/Renesas/RA/sc_v2025-12_fsp_v6.4.0/eclipse/rascc.exe" \
@@ -188,8 +192,10 @@ GPT321 (g_timer_alarm), IOPORT (g_ioport), Flat Non-TrustZone．"
 - `target/ek_ra6m5_llvm/fsp/ra_cfg/fsp_cfg/bsp/bsp_cfg.h` が生成される
 - `target/ek_ra6m5_llvm/fsp/ra_gen/vector_data.c` が生成される
 
-> GUI Generate と CLI rascc --generate は機能等価．入力は同じ
-> configuration.xml，出力は同じ `fsp/{ra,ra_cfg,ra_gen,IDE副生成物}`．
+> GUI の `Generate Project Content` ボタンと CLI `rascc --generate` は
+> 機能等価．入力は同じ configuration.xml，出力は同じ
+> `fsp/{ra,ra_cfg,ra_gen,IDE副生成物}`．本フローでは GUI 側は Save の
+> みに留め，生成は CLI で Claude がまとめて実行する．
 
 詳細は [`arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md`](arch/arm_m_llvm/ra_fsp/docs/fsp_setup.md)．
 
