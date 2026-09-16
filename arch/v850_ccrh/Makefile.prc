@@ -76,6 +76,30 @@ CDEFS := $(CDEFS) -DTOPPERS_LABEL_ASM
 LDFLAGS := $(LDFLAGS) -debug -nocompress -NOOPtimize -show=symbol -memory=high -nologo 
 
 #
+#  標準ライブラリ (rhs4n.lib / rhf4n.lib) の置き場所
+#
+#  rlink は -library= の相対パスをカレントディレクトリと環境変数 HLNK_DIR
+#  からしか探さない (Linux 版はさらに '\' を区切り文字と解釈しない)．
+#  HLNK_DIR に依存しないよう，PATH 上の ccrh から CC-RH のインストール
+#  ルートを求め，絶対パスで -library= に渡す．
+#  Cygwin/MSYS では rlink.exe (Windows ネイティブ) に渡すため cygpath で
+#  Windows 形式に変換する．パスに空白を含む (C:\Program Files (x86)\...)
+#  ので，make の単語関数 (dir/abspath 等) を通さず，使用箇所は "" で囲む．
+#  ルートは CCRH_ROOT=... で上書きできる．
+#
+CCRH_ROOT ?= $(shell p=$$(command -v ccrh) && cd "$$(dirname "$$p")/.." && pwd)
+ifeq ($(strip $(CCRH_ROOT)),)
+$(error ccrh not found in PATH; add CC-RH bin to PATH or pass CCRH_ROOT=<install root>)
+endif
+ifneq (,$(filter CYGWIN% MSYS% MINGW%,$(shell uname -s)))
+	CCRH_LIB_SOFT := $(shell cygpath -w "$(CCRH_ROOT)")\lib\v850e3v5\rhs4n.lib
+	CCRH_LIB_FPU  := $(shell cygpath -w "$(CCRH_ROOT)")\lib\v850e3v5\rhf4n.lib
+else
+	CCRH_LIB_SOFT := $(CCRH_ROOT)/lib/v850e3v5/rhs4n.lib
+	CCRH_LIB_FPU  := $(CCRH_ROOT)/lib/v850e3v5/rhf4n.lib
+endif
+
+#
 #  アーキテクチャの切り替え
 #
 ifeq ($(ARCH),V850E3V5)
@@ -87,26 +111,26 @@ endif
 #
 ifeq ($(CORETYPE),RH850G3K)
 	COPTS := $(COPTS) -Xcpu=g3k
-	LDFLAGS := $(LDFLAGS) -library=lib\\v850e3v5\\rhs4n.lib
+	LDFLAGS := $(LDFLAGS) -library="$(CCRH_LIB_SOFT)"
 endif
 ifeq ($(CORETYPE),RH850G3M)
 	COPTS := $(COPTS) -Xcpu=g3m
 	ifeq ($(USE_HARD_FLOAT),true)
 		COPTS := $(COPTS) -DTOPPERS_USE_HFLOAT -Xfloat=fpu
-		LDFLAGS := $(LDFLAGS) -library=lib\\v850e3v5\\rhf4n.lib 
+		LDFLAGS := $(LDFLAGS) -library="$(CCRH_LIB_FPU)" 
 	else
 		COPTS := $(COPTS) -Xfloat=soft
-		LDFLAGS := $(LDFLAGS) -library=lib\\v850e3v5\\rhs4n.lib
+		LDFLAGS := $(LDFLAGS) -library="$(CCRH_LIB_SOFT)"
 	endif
 endif
 ifeq ($(CORETYPE),RH850G3KH)
 	COPTS := $(COPTS) -Xcpu=g3kh
 	ifeq ($(USE_HARD_FLOAT),true)
 		COPTS := $(COPTS) -DTOPPERS_USE_HFLOAT -Xfloat=fpu
-		LDFLAGS := $(LDFLAGS) -library=lib\\v850e3v5\\rhf4n.lib 
+		LDFLAGS := $(LDFLAGS) -library="$(CCRH_LIB_FPU)" 
 	else
 		COPTS := $(COPTS) -Xfloat=soft
-		LDFLAGS := $(LDFLAGS) -library=lib\\v850e3v5\\rhs4n.lib 
+		LDFLAGS := $(LDFLAGS) -library="$(CCRH_LIB_SOFT)" 
 	endif
 endif
 

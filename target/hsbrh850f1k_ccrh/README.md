@@ -2,7 +2,8 @@
 
 Renesas **RH850/F1K (R7F701581)** 搭載ボード「HSB RH850F1K」向けの
 TOPPERS/ATK2 SC1 ターゲット依存部．**Renesas CC-RH コンパイラ**と
-**Cygwin 上の GNU make** でビルドする．
+**Cygwin 上の GNU make** でビルドする．Linux 版 CC-RH があれば
+**Linux 上でもそのままビルドできる** (§3)．
 
 このターゲットの依存部ファイルは，TOPPERS/ATK2-SC1 1.4.2 の RH850 移植版
 (`atk2_sc1_f1k`) からそのまま持ち込んでいる．本リポジトリ側での変更は
@@ -40,8 +41,8 @@ RH850 依存部は **gcc 版を共通部，ccrh 版を差分**とする 2 層構
 
 | ツール | 動作確認バージョン | 入手先 / 備考 |
 |---|---|---|
-| Renesas CC-RH | **V2.08.00** (オリジナルは V2.02.00 で確認) | CS+ 同梱．既定の場所は `C:/Program Files (x86)/Renesas Electronics/CS+/CC/CC-RH/V2.08.00/bin` |
-| Cygwin (make, nm, cmp, diff, coreutils) | GNU Make 4.4.1 / GNU nm (binutils) 2.46 | <https://www.cygwin.com/> |
+| Renesas CC-RH | **V2.08.00** (オリジナルは V2.02.00 で確認) | CS+ 同梱．既定の場所は `C:/Program Files (x86)/Renesas Electronics/CS+/CC/CC-RH/V2.08.00/bin`．Linux 版は `/usr/local/Renesas/CC-RH/V2.08.00/bin` で確認 |
+| Cygwin (make, nm, cmp, diff, coreutils) | GNU Make 4.4.1 / GNU nm (binutils) 2.46 | <https://www.cygwin.com/>．Linux ではディストリビューションの make / binutils でよい |
 | Python 3 | 3.7 以降 (Cygwin の Python 3.9 で確認) | cfg (`cfg/cfg_py/cfg.py`) と `utils/makedep.py` に必要 |
 
 `nm` は **Cygwin (GNU binutils) のもの**を使う．CC-RH が生成する ELF を
@@ -61,6 +62,30 @@ export PATH="/cygdrive/c/Program Files (x86)/Renesas Electronics/CS+/CC/CC-RH/V2
 cd obj/obj_hsbrh850f1k_ccrh
 make -j4
 ```
+
+Linux (Linux 版 CC-RH をインストール済) の場合は `ccrh` / `rlink` が
+`PATH` にあればよい:
+
+```sh
+export PATH="/usr/local/Renesas/CC-RH/V2.08.00/bin:$PATH"
+cd obj/obj_hsbrh850f1k_ccrh
+make -j4
+```
+
+> **標準ライブラリ (`rhs4n.lib`) の指定 — 環境変数 `HLNK_DIR` は不要**
+> `rlink` は `-library=` の相対パスをカレントディレクトリと環境変数
+> `HLNK_DIR` からしか探さない．オリジナルの `-library=lib\v850e3v5\rhs4n.lib`
+> は Windows で `HLNK_DIR` に CC-RH のインストールルートが設定されている
+> ことに依存していた (Linux では `HLNK_DIR` が無く，`\` を区切り文字とも
+> 解釈しないため `F0563300:Cannot open file` で止まる)．
+> 現在の `arch/v850_ccrh/Makefile.prc` は `PATH` 上の `ccrh` から
+> インストールルート (`CCRH_ROOT`) を求め，`rhs4n.lib` の**絶対パス**を
+> `-library=` に渡すので，Windows / Linux とも `HLNK_DIR` を設定する必要は
+> ない．Cygwin では `cygpath -w` で Windows 形式
+> (`C:\Program Files (x86)\...\rhs4n.lib`) に変換し，空白を含むので `""` で
+> 囲んで渡す．`ccrh` を `PATH` に置かない場合や別の場所に入れた場合は
+> `make CCRH_ROOT=/opt/Renesas/CC-RH/V2.08.00` のように明示する
+> (`ccrh` が見つからないと make は `ccrh not found in PATH` で停止する)．
 
 主な生成物 (ビルドディレクトリ直下):
 
