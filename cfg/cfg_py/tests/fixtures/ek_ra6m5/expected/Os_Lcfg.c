@@ -181,7 +181,7 @@ const HWCNTINIB kernel_hwcntinib_table[TNUM_HARDCOUNTER] =
 		&int_clear_hwcounter_MAIN_HW_COUNTER,
 		&int_cancel_hwcounter_MAIN_HW_COUNTER,
 		&increment_hwcounter_MAIN_HW_COUNTER,
-		0U		/* 0.000000 * 1000000000 */ 
+		40U		/* 0.00000004 * 1000000000 */ 
 	}
 };
 

@@ -102,6 +102,13 @@ Os_Lcfg.timestamp
 Os_Cfg.h
 Os_Cfg_tmp.h
 offset.h
+#  RH850 (CC-RH) ターゲットで pass2 が追加生成するもの
+#  (arch/v850_ccrh/prc.tf と target/hsbrh850f1k_ccrh/target_asm.tf の出力)
+#  なお arch/v850_ccrh/{start,prc_support}.asm は手書きソースなので
+#  *.asm を一括除外してはならない．
+Os_Lcfg_asm.asm
+Os_Lcfg_asm.S
+asm_config.inc
 offset.timestamp
 kernel.res
 check.timestamp

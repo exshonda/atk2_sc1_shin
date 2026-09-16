@@ -4,10 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-TOPPERS/ATK2 (AUTOSAR Kernel Version 2, SC1) ported from the original Nios2 distribution to **two ARM Cortex-M33 boards**:
+TOPPERS/ATK2 (AUTOSAR Kernel Version 2, SC1) ported from the original Nios2 distribution to **three boards**:
 
-- **STMicroelectronics NUCLEO-H563ZI** (STM32H563ZI) — original ARM port; built with arm-none-eabi-gcc.
-- **Renesas EK-RA6M5** (R7FA6M5BH) — second port; built with ATfE clang 21.1.1 + Renesas FSP 6.4.0.
+- **STMicroelectronics NUCLEO-H563ZI** (STM32H563ZI, Cortex-M33) — original ARM port; built with arm-none-eabi-gcc.
+- **Renesas EK-RA6M5** (R7FA6M5BH, Cortex-M33) — second port; built with ATfE clang 21.1.1 + Renesas FSP 6.4.0.
+- **HSB RH850F1K** (R7F701581, RH850 G3KH) — brought over from the ATK2-SC1 1.4.2 RH850 port (`../atk2_sc1_f1k`) with sources unchanged; built with Renesas CC-RH V2.08.00 under **Cygwin** make.
 
 The Nios2 target has been **removed** from this tree. The dispatcher and ARM port were modeled on TOPPERS/ASP3.
 
@@ -19,6 +20,7 @@ User-facing documentation (Japanese) is in:
 - [arch/arm_m_llvm/ra_fsp/README.md](arch/arm_m_llvm/ra_fsp/README.md) — RA + FSP chip layer
 - [target/nucleo_h563zi_gcc/README.md](target/nucleo_h563zi_gcc/README.md) — NUCLEO-H563ZI board
 - [target/ek_ra6m5_llvm/README.md](target/ek_ra6m5_llvm/README.md) — EK-RA6M5 board
+- [target/hsbrh850f1k_ccrh/README.md](target/hsbrh850f1k_ccrh/README.md) — HSB RH850F1K board (CC-RH)
 - [cfg/cfg_py/README.md](cfg/cfg_py/README.md) — cfg Python port
 
 Read those before guessing. Source-level docs in `doc/` describe the original ATK2 SC1 kernel.
@@ -35,6 +37,8 @@ Locations (all use forward-slash MSYS-style for bash):
 | ATfE 21.1.1 (`clang.exe`) | `/c/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/toolchains/llvm_arm/ATfE-21.1.1-Windows-x86_64/bin/` | EK-RA6M5 |
 | `rascc.exe` (FSP generator) | `/c/Renesas/RA/sc_v2025-12_fsp_v6.4.0/eclipse/rascc.exe` | EK-RA6M5 (one-shot, post-clone) |
 | J-Link CLI | `/c/Program Files/SEGGER/JLink_V920/JLink.exe` (already on `PATH`) | EK-RA6M5 flashing |
+| Renesas CC-RH V2.08.00 | `/c/Program Files (x86)/Renesas Electronics/CS+/CC/CC-RH/V2.08.00/bin/` | HSB RH850F1K (`ccrh`, `rlink`) |
+| Cygwin bash/make/nm | `/c/cygwin64/bin/` | HSB RH850F1K — this target builds under **Cygwin**, not MSYS2 |
 
 One-liner to set up the shell for an EK-RA6M5 build (assumes you've
 already run `rascc --generate target/ek_ra6m5_llvm/fsp/configuration.xml`
@@ -54,6 +58,13 @@ MAKE='/c/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/eclipse/plugins/com.renesas.ide
 cd obj/obj_nucleo_h563zi && "$MAKE" -j4
 ```
 
+HSB RH850F1K builds from a **Cygwin** shell (its make, nm and coreutils are
+the ones the Makefile expects):
+
+```sh
+C:/cygwin64/bin/bash.exe -lc 'export PATH="/cygdrive/c/Program Files (x86)/Renesas Electronics/CS+/CC/CC-RH/V2.08.00/bin:$PATH"; cd /cygdrive/c/.../atk2_sc1_shin/obj/obj_hsbrh850f1k_ccrh && make -j4'
+```
+
 ## Common commands
 
 All builds happen from the per-target build directory, **not** the repo root.
@@ -69,6 +80,8 @@ make debug                # arm-none-eabi-gdb against localhost:3333
 ```
 
 Outputs land in the build directory: `atk2-sc1` (ELF), `atk2-sc1.srec`, `atk2-sc1.dump`, `atk2-sc1.map`, plus generator artifacts (`Os_Lcfg.c/h`, `Os_Cfg.h`, `cfg1_out.c`, `offset.h`).
+
+For HSB RH850F1K the equivalent is `cd obj/obj_hsbrh850f1k_ccrh && make -j4` (Cygwin shell, CC-RH on `PATH`); it produces `atk2-sc1.elf`, `atk2-sc1.srec`, `atk2-sc1.map` and additionally `Os_Lcfg_asm.asm` / `asm_config.inc`. There is no `make flash` / `make debug` for it.
 
 `configure.py` regenerates `sample/Makefile` and template app files from `sample/` templates — it is rarely run for this target since `obj/obj_nucleo_h563zi/Makefile` is committed.
 
@@ -117,17 +130,22 @@ XSD files (`AUTOSAR_4-0-3_STRICT.xsd`, `xml.xsd`) that shipped with the C++ buil
 
 The kernel is layered (innermost → outermost). PRC sources live exclusively in `arch/arm_m_gcc/common/` and are reused by both targets — the LLVM target picks them up via vpath instead of duplicating:
 
-| Layer | NUCLEO-H563ZI (gcc) | EK-RA6M5 (llvm) |
-|---|---|---|
-| Generic SC1 kernel | `kernel/` (unmodified TOPPERS/ATK2 SC1 1.4.2) | (same) |
-| System modules | `sysmod/` (banner, syslog, serial) + `library/` | (same) |
-| Processor (CPU) sources | `arch/arm_m_gcc/common/` | (same; vpath from `arch/arm_m_llvm/common/Makefile.prc`) |
-| Processor (CPU) toolchain glue | `arch/arm_m_gcc/common/Makefile.prc` | `arch/arm_m_llvm/common/Makefile.prc` |
-| AUTOSAR Compiler abstraction | `arch/gcc/{Compiler.h,Compiler_Cfg.h}` | `arch/llvm/{Compiler.h,Compiler_Cfg.h}` (#includes the gcc one) |
-| Chip | `arch/arm_m_gcc/stm32h5xx_stm32cube/` (HAL Driver bundled) | `arch/arm_m_llvm/ra_fsp/` (FSP **not** bundled — `rascc --generate` post-clone) |
-| Target (board) | `target/nucleo_h563zi_gcc/` (USART3, TIM2/TIM5 HW counter, STM32CubeIDE project) | `target/ek_ra6m5_llvm/` (SCI7, GPT320/GPT321 HW counter, e² studio debug-only project) |
-| Build directory | `obj/obj_nucleo_h563zi/` | `obj/obj_ek_ra6m5/` |
-| Application | `sample/sample1.c` (+ `*.arxml`) | (same) |
+| Layer | NUCLEO-H563ZI (gcc) | EK-RA6M5 (llvm) | HSB RH850F1K (ccrh) |
+|---|---|---|---|
+| Generic SC1 kernel | `kernel/` (unmodified TOPPERS/ATK2 SC1 1.4.2) | (same) | (same) |
+| System modules | `sysmod/` (banner, syslog, serial) + `library/` | (same) | (same) |
+| Processor (CPU) sources | `arch/arm_m_gcc/common/` | (same; vpath from `arch/arm_m_llvm/common/Makefile.prc`) | `arch/v850_ccrh/` (asm, `prc_tool.c`) over `arch/v850_gcc/` (C sources) |
+| Processor (CPU) toolchain glue | `arch/arm_m_gcc/common/Makefile.prc` | `arch/arm_m_llvm/common/Makefile.prc` | `arch/v850_ccrh/Makefile.prc` |
+| AUTOSAR Compiler abstraction | `arch/gcc/{Compiler.h,Compiler_Cfg.h}` | `arch/llvm/{Compiler.h,Compiler_Cfg.h}` (#includes the gcc one) | `arch/ccrh/` (own `Compiler.h`, `stdint.h`, `tool_cfg1_out.h`) |
+| Chip | `arch/arm_m_gcc/stm32h5xx_stm32cube/` (HAL Driver bundled) | `arch/arm_m_llvm/ra_fsp/` (FSP **not** bundled — `rascc --generate` post-clone) | (no separate chip layer; `rh850_f1k.c/h` lives in `arch/v850_gcc/`) |
+| Target (board) | `target/nucleo_h563zi_gcc/` (USART3, TIM2/TIM5 HW counter, STM32CubeIDE project) | `target/ek_ra6m5_llvm/` (SCI7, GPT320/GPT321 HW counter, e² studio debug-only project) | `target/hsbrh850f1k_ccrh/` over `target/hsbrh850f1k_gcc/` (RLIN3 port 1, TAUJ0/TAUJ1 HW counter @16 MHz) |
+| Build directory | `obj/obj_nucleo_h563zi/` | `obj/obj_ek_ra6m5/` | `obj/obj_hsbrh850f1k_ccrh/` |
+| Application | `sample/sample1.c` (+ `*.arxml`) | (same) | (same) |
+
+The RH850 target uses a **two-layer overlay**: `*_ccrh` directories hold only
+the CC-RH-specific files and the `*_gcc` directories supply everything else.
+Include paths and `vpath` list the `_ccrh` directory first, so a file present
+in both wins from `_ccrh`. Do not "clean up" by merging them.
 
 Each layer contributes `Makefile.{prc,chip,target}`, a `.tf` template (pass2 emit), a `_check.tf` (pass3 verify), a `_def.csv` (pass1 token table), `_rename.h` / `_unrename.h`, and a `_cfg1_out.h` stub used when linking the pass1 host-side checker.
 
@@ -164,10 +182,22 @@ The `CFGNAME` make variable is the space-separated list of arxml basenames (with
 ### Both targets
 
 - **`Os_Lcfg.timestamp` is the central pivot** — almost every `.o` has an order-only dependency on it (see "High-level build pipeline" above). Adding `cfg1_out.o` or `start.o` to that dependency list creates a cycle.
+- **`kernel/kernel_rename.{h,def}` and `kernel_unrename.h` must keep the `TOPPERS_LABEL_ASM` section** (underscore-prefixed aliases) and the `p_runisr` / `sus_os_cnt` / `sus_all_cnt` entries. A regenerated copy that dropped them broke the RH850 link (`_kernel_p_runisr` undefined from `prc_support`).
 - **PendSV must be priority 0xFF** for tail-chain interrupt-exit dispatch. Other ISRs must be ≥ `tmin_basepri` (0x10).
 - **TrustZone (TZEN/Secure state)**: every target must define exactly one of `TOPPERS_TZ_NS` / `TOPPERS_TZ_S` in `Makefile.target`'s `CDEFS`. `arm_m.h` `#error`s if neither or both are set. Different boards land on different sides:
   - H5 (TZEN=0): `TOPPERS_TZ_NS` → `EXC_RETURN = 0xFFFFFFBC`
   - RA6M5 (FSP "Flat Non-TrustZone Project", but Full Secure at runtime): `TOPPERS_TZ_S` → `EXC_RETURN = 0xFFFFFFFD`
+
+### HSB RH850F1K (ccrh)
+
+- **Build from Cygwin, not MSYS2** — the Makefile relies on Cygwin's `make`, `nm`, `cmp` and coreutils. Objects use the `.obj` extension, assembly sources are `.asm`, and linking/archiving both go through `rlink` (`-output=`, `-form=stype`, `-form=library=u`); there is no `objcopy`/`objdump` step.
+- **`ccrh` takes `-ofile`, not `-o file`** (no space). `-MF=`/`-MT=` take an `=`.
+- **Do not use `ccrh -MMD` for dependency files.** It writes Windows absolute paths with backslashes (and CP932 bytes for non-ASCII path components, where a Shift_JIS trail byte can be `0x5C`), which Cygwin make cannot resolve. `utils/makedep.py` generates the `.d` files instead, keeping the relative paths the Makefile passed; it also understands the assembler's `$include (file)` syntax, so `prc_support.asm` correctly depends on `offset.h` and `asm_config.inc`.
+- **pass2 emits two extra files** beyond the ARM targets: `Os_Lcfg_asm.asm` (the EIINTTBL interrupt vector table, from `arch/v850_ccrh/prc.tf`) and `asm_config.inc` (assembler `.set` definitions, from `target/hsbrh850f1k_ccrh/target_asm.tf`). Both are listed in `CFG2_OUT`.
+- **`prc_support.asm` needs `offset.h`** (pass3 output), hence `$(KERNEL_ASMOBJS): | $(OFFSET_H)`.
+- **CC-RH prefixes C symbols with `_`.** `cfg_py`'s `read_symbol_file()` registers an unprefixed alias for each `_`-prefixed symbol so `TNUM_INT` etc. resolve in pass2.
+- With an expired CC-RH V2 evaluation licence the compiler warns (`W0511187`/`W0511151`/`W0561017`) and silently downgrades `-Ospeed` to `-Odefault`. The build still completes.
+- CS+ project generation (`arch/ccrh/configure/`) and `configure.py` are **not** supported for this target; flashing/execution is out of scope.
 
 ### NUCLEO-H563ZI (gcc)
 
@@ -184,6 +214,10 @@ The `CFGNAME` make variable is the space-separated list of arxml basenames (with
 - **ICU IELSR.IR must be cleared** in each ISR after handling, otherwise the interrupt re-enters in a tight loop. Wrappers in `target_config.c` and `target_hw_counter.c` call `R_BSP_IrqStatusClear()` accordingly.
 
 ## 開発項目
+- HSB RH850F1K (R7F701581) を Cygwin 上の make でビルド可能にする **(完了)**
+  - 依存部ファイルは `../atk2_sc1_f1k` からソース無変更で持ち込む
+  - CS+ でのビルド，`configure.py` 対応，書き込み・実行は対象外
+  - 詳細は [`target/hsbrh850f1k_ccrh/README.md`](target/hsbrh850f1k_ccrh/README.md)
 - EK-RA6M5 向けの依存部を開発する  **(Phase 1〜5 完了; Phase 6 ドキュメント整備中)**
   - コア依存部（./arch/arm_m_gcc/common）は変更せずにそのまま使用する
   - Renesas の FSP ドライバを使ってよい

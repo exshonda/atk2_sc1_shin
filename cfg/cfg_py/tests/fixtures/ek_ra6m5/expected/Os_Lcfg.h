@@ -61,10 +61,10 @@
 #define OSTICKSPERBASE_SchtblSampleCnt	((TickType) 10)
 #define OSMINCYCLE_SchtblSampleCnt	((TickType) 10)
 
-#define OS_TICKS2SEC_MAIN_HW_COUNTER(tick)	(((PhysicalTimeType)0U) * (tick) / 1000000000U)	/* (0.000000 * 1000000000) * (tick) / 1000000000 */
-#define OS_TICKS2MS_MAIN_HW_COUNTER(tick)	(((PhysicalTimeType)0U) * (tick) / 1000000U)		/* (0.000000 * 1000000000) * (tick) / 1000000 */
-#define OS_TICKS2US_MAIN_HW_COUNTER(tick)	(((PhysicalTimeType)0U) * (tick) / 1000U)			/* (0.000000 * 1000000000) * (tick) / 1000 */
-#define OS_TICKS2NS_MAIN_HW_COUNTER(tick)	(((PhysicalTimeType)0U) * (tick))					/* (0.000000 * 1000000000) * (tick) */
+#define OS_TICKS2SEC_MAIN_HW_COUNTER(tick)	(((PhysicalTimeType)40U) * (tick) / 1000000000U)	/* (0.00000004 * 1000000000) * (tick) / 1000000000 */
+#define OS_TICKS2MS_MAIN_HW_COUNTER(tick)	(((PhysicalTimeType)40U) * (tick) / 1000000U)		/* (0.00000004 * 1000000000) * (tick) / 1000000 */
+#define OS_TICKS2US_MAIN_HW_COUNTER(tick)	(((PhysicalTimeType)40U) * (tick) / 1000U)			/* (0.00000004 * 1000000000) * (tick) / 1000 */
+#define OS_TICKS2NS_MAIN_HW_COUNTER(tick)	(((PhysicalTimeType)40U) * (tick))					/* (0.00000004 * 1000000000) * (tick) */
 
 /****** Object ALARM ******/
 

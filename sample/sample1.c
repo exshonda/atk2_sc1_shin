@@ -599,8 +599,6 @@ TASK(MainTask)
 	 */
 	SetRelAlarm(MainCycArm, TICK_FOR_10MS, TICK_FOR_10MS);
 
-    syslog(LOG_INFO, "pass1");
-
 	/*
 	 *  コマンド実行ループ
 	 */

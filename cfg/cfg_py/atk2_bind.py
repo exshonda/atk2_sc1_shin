@@ -9,6 +9,7 @@
 #
 
 import os
+from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Optional, Tuple
 
 from atk2_xml import (
@@ -166,10 +167,13 @@ def bind_object_vars(ctx: Dict[str, Any], xml_obj_map: Dict[str, List[Object]],
                     if iv is not None and isinstance(iv, int):
                         e["i"] = iv
                     elif iv is not None and isinstance(iv, float):
-                        # FLOAT の場合: e.i = int(value)，e.s は %f 既定精度
-                        # でフォーマットし直す (C++ 互換: "1.0e-06" → "0.000001")．
+                        # FLOAT の場合: e.i = int(value)，e.s は指数表現を
+                        # 展開した固定小数点表記にする (C++ 互換:
+                        # "1.0e-06" → "0.000001"，"6.25e-08" → "0.0000000625")．
+                        # kernel.tf の FLOAT_TO_FIXINT は e.s を文字列として
+                        # 解析するため，桁を落とすと NSPERTICK が 0 になる．
                         e["i"] = int(iv)
-                        e["s"] = format(iv, "f")
+                        e["s"] = _fixed_point_str(p.value)
                     else:
                         # symbol lookup: TOPPERS_cfg_valueof_<C>_<P>_<O>_<G>
                         cdef = (p.parent.def_name if p.parent else "").replace(".", "_")
@@ -247,18 +251,49 @@ def build_context(xc: XmlContext, cfg1_def_table: List[Cfg1Def],
     return ctx
 
 
+def _fixed_point_str(value: str) -> str:
+    """FLOAT パラメータの文字列を指数表現なしの固定小数点表記にする．
+
+    Decimal を使うので桁落ちしない．末尾の余分な 0 は落とす
+    ("1.0e-06" → "0.0000010" → "0.000001")が，小数点以下が空になる
+    場合は 1 桁残す (kernel.tf の FLOAT_TO_FIXINT が `[0-9]+\\.[0-9]+`
+    にマッチすることを期待しているため)．
+    """
+    try:
+        s = format(Decimal(value.strip()), "f")
+    except (InvalidOperation, ValueError):
+        return value
+    if "." in s:
+        s = s.rstrip("0")
+        if s.endswith("."):
+            s += "0"
+    return s
+
+
 def read_symbol_file(path: str) -> Dict[str, int]:
     """nm 形式 (`<addr> <type> <name>`) の symbol テーブルを dict に．
 
     cfg.py 既存の read_symbol_file を流用する形で再実装．
+
+    ツールチェインによっては C のシンボル名にアンダースコアが前置される
+    （CC-RH の `_TOPPERS_cfg_TNUM_INT` など）．この場合でもジェネレータ側が
+    使う名前 (`TOPPERS_cfg_TNUM_INT`) で引けるよう，前置なしの別名も登録する．
+    同名の実シンボルがある場合はそちらを優先する．
     """
     out: Dict[str, int] = {}
+    aliases: Dict[str, int] = {}
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
             parts = line.split()
             if len(parts) == 3:
                 try:
-                    out[parts[2]] = int(parts[0], 16)
+                    addr = int(parts[0], 16)
                 except ValueError:
-                    pass
+                    continue
+                name = parts[2]
+                out[name] = addr
+                if name.startswith("_"):
+                    aliases.setdefault(name[1:], addr)
+    for name, addr in aliases.items():
+        out.setdefault(name, addr)
     return out

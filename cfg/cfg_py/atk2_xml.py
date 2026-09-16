@@ -620,8 +620,10 @@ def build(arxml_paths: List[str],
     4. モジュールマージ
     5. モジュールフィルタ (XML_ModuleName)
     6. INCLUDE 抽出 (rename 前に: info_map のフルパスでも一致するため)
-    7. valueof_* マクロ抽出
-    8. tfname リネーム
+    7. tfname リネーム
+    8. valueof_* マクロ抽出 (rename 後: シンボル名に tfname を使うため
+       — 例 TOPPERS_cfg_valueof_ISR_INTNO_<obj>_<module>．pass2 側の
+       atk2_bind.py も同じ名前を rename 後の def_name から組み立てる)
     9. xml_obj_map 構築
     10. ID/siblings 振り分け
     """
@@ -638,8 +640,8 @@ def build(arxml_paths: List[str],
     modules = merge_modules(modules)
     modules = filter_modules(modules, container_path, module_names)
     includes = search_includes(modules, info_map)
-    valueof = search_valueof_macros(modules)
     replace_pathnames(modules, info_map)
+    valueof = search_valueof_macros(modules)
     xml_obj_map = build_xml_obj_map(modules)
     assign_ids(xml_obj_map)
     assign_siblings(xml_obj_map)
