@@ -253,9 +253,7 @@ target_exit(void)
 	except_nest_cnt = 0U;
 	nested_lock_os_int_cnt = 0U;
 	sus_all_cnt = 0U;
-	sus_all_cnt_ctx = 0U;
 	sus_os_cnt = 0U;
-	sus_os_cnt_ctx = 0U;
 
 	/* スタックポインタの初期化とmain()の呼び出し */
 	return_main();
