@@ -276,6 +276,7 @@ FE_SAVEREG .macro
 .endm
 
 FE_RESTOREREG .macro
+	mov     sp, ep
 	sld.w    4[ep], r6
 	ldsr    r6, fepc
 	sld.w    0[ep], r6
@@ -292,6 +293,7 @@ EI_SAVEREG .macro
 .endm
 
 EI_RESTOREREG .macro
+	mov     sp, ep
 	sld.w    4[ep], r6
 	ldsr    r6, eipc
 	sld.w    0[ep], r6
@@ -597,10 +599,11 @@ $ifdef CFG_USE_PROTECTIONHOOK
 	addi    -12, sp, sp
 
 	;/* v850_cpu_exp_spの退避と設定 */
-	Lea     _kernel_v850_cpu_exp_sp, r12
-	st.w    r9, 0[r12]
-	st.w    ep, 0[sp]
 	mov     sp, ep
+	Lea     _kernel_v850_cpu_exp_sp, r12
+	ld.w    0[r12], r13
+	sst.w   r13, 0[ep]
+	st.w    r9, 0[r12]
 
 	;/* v850_cpu_exp_noの退避と設定 */
 	Lea     _kernel_v850_cpu_exp_no, r12
@@ -834,10 +837,11 @@ $ifdef CFG_USE_PROTECTIONHOOK
 	addi    -12, sp, sp
 
 	;/* v850_cpu_exp_spの退避と設定 */
-	Lea     _kernel_v850_cpu_exp_sp, r12
-	st.w    r9, 0[r12]
-	st.w    ep, 0[sp]
 	mov     sp, ep
+	Lea     _kernel_v850_cpu_exp_sp, r12
+	ld.w    0[r12], r13
+	sst.w   r13, 0[ep]
+	st.w    r9, 0[r12]
 
 	;/* v850_cpu_exp_noの退避と設定 */
 	Lea     _kernel_v850_cpu_exp_no, r12
