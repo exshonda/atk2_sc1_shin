@@ -1,13 +1,14 @@
-# TOPPERS/ATK2 移植版 (NUCLEO-H563ZI / EK-RA6M5 / HSB RH850F1K)
+# TOPPERS/ATK2 移植版 (NUCLEO-H563ZI / EK-RA6M5 / HSB RH850F1K / RH850F1KM-S1)
 
 TOPPERS/ATK2 (AUTOSAR Kernel Version 2, SC1) を各種評価ボード上で動作
-させる実装一式．現在 3 つのボードに対応:
+させる実装一式．現在 4 つのターゲットに対応:
 
 | 略称 | ボード | MCU | ツールチェイン | チップ依存部 / ターゲット |
 |---|---|---|---|---|
 | `nucleo_h563zi_gcc` | STMicroelectronics NUCLEO-H563ZI | STM32H563ZI (Cortex-M33 + FPU) | arm-none-eabi-gcc 13/14 | `arch/arm_m_gcc/stm32h5xx_stm32cube/` (STM32Cube HAL 同梱) / `target/nucleo_h563zi_gcc/` |
 | `ek_ra6m5_llvm` | Renesas EK-RA6M5 | R7FA6M5BH (Cortex-M33 + FPU) | ATfE clang 21.1.1 | `arch/arm_m_llvm/ra_fsp/` (Renesas FSP 6.4.0 ベース; **FSP 非同梱**) / `target/ek_ra6m5_llvm/` |
 | `hsbrh850f1k_ccrh` | HSB RH850F1K | R7F701581 (RH850/F1K, G3KH コア) | Renesas CC-RH V2.08.00 | `arch/v850_ccrh/` + `arch/v850_gcc/` / `target/hsbrh850f1k_ccrh/` + `target/hsbrh850f1k_gcc/` |
+| `rh850f1kms1_ccrh` | RH850/F1KM-S1 搭載ボード | R7F701684 (RH850/F1KM-S1, G3KH コア) | Renesas CC-RH V2.08.00 | `arch/v850_ccrh/` + `arch/v850_gcc/` / `target/rh850f1kms1_ccrh/` |
 
 前 2 者は，オリジナル ATK2 SC1 (Nios2 用) に対し ARM Cortex-M 共通
 プロセッサ依存部 (`arch/arm_m_gcc/common`) と各チップ・ターゲット依存部を
@@ -19,6 +20,12 @@ TOPPERS/ATK2 (AUTOSAR Kernel Version 2, SC1) を各種評価ボード上で動�
 本リポジトリの方式 (Python 版 cfg・`objs/` 集約・自動依存生成・並列
 make) に合わせている．詳細は
 [`target/hsbrh850f1k_ccrh/README.md`](target/hsbrh850f1k_ccrh/README.md)．
+
+4 番目の RH850/F1KM-S1 依存部は，HSB RH850F1K 依存部を土台に，クロック
+構成・ログ出力 (RLIN32)・ハードウェアカウンタ (TAUB) を F1KM-S1 向けに
+差し替えたもの．プロセッサ依存部 (`arch/v850_ccrh`, `arch/v850_gcc` の
+`prc_*`) は F1K と共用で変更していない．実機で動作確認済み．詳細は
+[`target/rh850f1kms1_ccrh/README.md`](target/rh850f1kms1_ccrh/README.md)．
 
 ## ディレクトリ構成
 
@@ -39,7 +46,8 @@ atk2_sc1_shin/
 │   ├── nucleo_h563zi_gcc/          NUCLEO-H563ZI ターゲット依存部 + STM32CubeIDE プロジェクト
 │   ├── ek_ra6m5_llvm/              EK-RA6M5 ターゲット依存部 + e² studio デバッグ専用プロジェクト
 │   ├── hsbrh850f1k_gcc/            HSB RH850F1K ターゲット依存部 共通部
-│   └── hsbrh850f1k_ccrh/           HSB RH850F1K ターゲット依存部 CC-RH 差分
+│   ├── hsbrh850f1k_ccrh/           HSB RH850F1K ターゲット依存部 CC-RH 差分
+│   └── rh850f1kms1_ccrh/           RH850/F1KM-S1 ターゲット依存部 (CC-RH, 単層)
 ├── kernel/                         OS カーネル (オリジナル)
 ├── sample/                         サンプル
 ├── sysmod/                         システムモジュール
@@ -48,7 +56,8 @@ atk2_sc1_shin/
 ├── obj/
 │   ├── obj_nucleo_h563zi/          NUCLEO-H563ZI 用ビルドディレクトリ
 │   ├── obj_ek_ra6m5/               EK-RA6M5 用ビルドディレクトリ
-│   └── obj_hsbrh850f1k_ccrh/       HSB RH850F1K 用ビルドディレクトリ
+│   ├── obj_hsbrh850f1k_ccrh/       HSB RH850F1K 用ビルドディレクトリ
+│   └── obj_rh850f1kms1_ccrh/       RH850/F1KM-S1 用ビルドディレクトリ
 ├── cfg/
 │   └── cfg_py/                     ATK2 cfg ツール Python 移植版 (デフォルト)
 ├── utils/                          ユーティリティスクリプト (Python)
@@ -60,11 +69,11 @@ atk2_sc1_shin/
 
 各層の詳細は以下の README を参照:
 
-| 層 | NUCLEO-H563ZI | EK-RA6M5 | HSB RH850F1K |
+| 層 | NUCLEO-H563ZI | EK-RA6M5 | HSB RH850F1K / RH850F1KM-S1 |
 |---|---|---|---|
 | プロセッサ (CPU 共通) | [`arch/arm_m_gcc/common/README.md`](arch/arm_m_gcc/common/README.md) | (同左; ソースを vpath で再利用) | [`arch/v850_gcc/prc_user.txt`](arch/v850_gcc/prc_user.txt), [`arch/v850_ccrh/prc_user.txt`](arch/v850_ccrh/prc_user.txt) |
 | チップ | [`arch/arm_m_gcc/stm32h5xx_stm32cube/README.md`](arch/arm_m_gcc/stm32h5xx_stm32cube/README.md) | [`arch/arm_m_llvm/ra_fsp/README.md`](arch/arm_m_llvm/ra_fsp/README.md) | (チップ層なし; プロセッサ層に統合) |
-| ターゲット (ボード) | [`target/nucleo_h563zi_gcc/README.md`](target/nucleo_h563zi_gcc/README.md) | [`target/ek_ra6m5_llvm/README.md`](target/ek_ra6m5_llvm/README.md) | [`target/hsbrh850f1k_ccrh/README.md`](target/hsbrh850f1k_ccrh/README.md) |
+| ターゲット (ボード) | [`target/nucleo_h563zi_gcc/README.md`](target/nucleo_h563zi_gcc/README.md) | [`target/ek_ra6m5_llvm/README.md`](target/ek_ra6m5_llvm/README.md) | [`target/hsbrh850f1k_ccrh/README.md`](target/hsbrh850f1k_ccrh/README.md) / [`target/rh850f1kms1_ccrh/README.md`](target/rh850f1kms1_ccrh/README.md) |
 
 > **注**: 本リポジトリには **Nios2 ターゲット (`arch/nios2_gcc`,
 > `target/nios2_dev_gcc`, `obj/obj_nios2`) は含まれていない**．Nios2 用
@@ -100,7 +109,7 @@ C:/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/toolchains/llvm_arm/ATfE-21.1.1-Windo
 このディレクトリを `PATH` に通せば `clang`, `llvm-ar`, `llvm-nm`,
 `llvm-objcopy`, `llvm-objdump` がそのまま見える．
 
-#### HSB RH850F1K 用: Renesas CC-RH V2.08.00
+#### HSB RH850F1K / RH850F1KM-S1 用: Renesas CC-RH V2.08.00
 
 Renesas CS+ 同梱の **CC-RH** (`ccrh` / `rlink`) を使用．標準パス:
 
@@ -233,6 +242,16 @@ make -j4
 生成されるのは `atk2-sc1.elf` / `atk2-sc1.srec` / `atk2-sc1.map`．
 書き込み・実行はサポートしていない (別途 CS+ 等で行う)．
 
+### RH850/F1KM-S1 (Cygwin の Make + CC-RH)
+
+ビルド手順は HSB RH850F1K と同じで，ビルドディレクトリだけが異なる:
+
+```sh
+export PATH="/cygdrive/c/Program Files (x86)/Renesas Electronics/CS+/CC/CC-RH/V2.08.00/bin:$PATH"
+cd obj/obj_rh850f1kms1_ccrh
+make -j4
+```
+
 ARM 系ターゲットでは `atk2-sc1` (ELF) / `atk2-sc1.srec` /
 `atk2-sc1.dump` がビルドディレクトリに生成される．
 
@@ -285,7 +304,7 @@ Python 実行可能ファイル名は `PYTHON` 変数で上書き可能 (例:
 | arm-none-eabi-gcc | 13.3.1 / 14.3.1 | NUCLEO-H563ZI ビルド (Arm GNU Toolchain / STM32CubeIDE) |
 | arm-none-eabi-binutils | 2.42.0 / 14.3.1 | 同上 |
 | **ARM LLVM (ATfE)** | **21.1.1** | EK-RA6M5 ビルド (Renesas e² studio v2025-12 同梱) |
-| **Renesas CC-RH** | **V2.08.00** | HSB RH850F1K ビルド (CS+ 同梱) |
+| **Renesas CC-RH** | **V2.08.00** | HSB RH850F1K / RH850F1KM-S1 ビルド (CS+ 同梱) |
 | GNU Make | 4.4 (msys2 / e² studio 同梱) / 4.4.1 (Cygwin) | 全ターゲット．RH850 は Cygwin の make を使用 |
 | Cygwin (binutils 2.46 の `nm` 等) | 2025 年時点の current | HSB RH850F1K ビルド環境 |
 | Python | 3.7 以降 (3.13 / 3.14 で動作確認) | cfg_py 実行用．<https://www.python.org/> |
@@ -330,8 +349,10 @@ Python 実行可能ファイル名は `PYTHON` 変数で上書き可能 (例:
 | `target/ek_ra6m5_llvm/` | EK-RA6M5 ボード依存部 (リンカスクリプト, SCI7, GPT320/GPT321 HW カウンタ, e² studio デバッグ専用プロジェクト, FSP `configuration.xml`)． |
 | `arch/v850_gcc/`, `arch/v850_ccrh/`, `arch/ccrh/` | RH850/V850 プロセッサ依存部と CC-RH 用 Compiler 抽象．ATK2-SC1 1.4.2 の RH850 移植版からソース無変更で取込み (`arch/ccrh/` の CS+ プロジェクト生成スクリプトは除く)． |
 | `target/hsbrh850f1k_gcc/`, `target/hsbrh850f1k_ccrh/` | HSB RH850F1K (R7F701581) ボード依存部．同上． |
+| `target/rh850f1kms1_ccrh/` | RH850/F1KM-S1 (R7F701684) ターゲット依存部．HSB RH850F1K 依存部をベースに新規作成 (単層構成)． |
+| `arch/v850_gcc/rh850_f1km.{c,h}`, `arch/v850_gcc/taub_hw_counter.c` | RH850/F1KM-S1 のクロック設定と TAUB ハードウェアカウンタ．`rh850_f1k.{c,h}` / `tauj_hw_counter.c` をベースに新規作成． |
 | `utils/makedep.py` | ヘッダ依存関係生成ツール (gcc の `-MMD -MP` 相当)．CC-RH の `-MMD` が Windows 絶対パスを出力し Cygwin の make で解決できないため新規作成． |
-| `obj/obj_nucleo_h563zi/`, `obj/obj_ek_ra6m5/`, `obj/obj_hsbrh850f1k_ccrh/` | 各ターゲットのビルドディレクトリ． |
+| `obj/obj_nucleo_h563zi/`, `obj/obj_ek_ra6m5/`, `obj/obj_hsbrh850f1k_ccrh/`, `obj/obj_rh850f1kms1_ccrh/` | 各ターゲットのビルドディレクトリ． |
 | `cfg/cfg_py/` | ATK2 cfg ツールの Python 完全移植版 (pass1/2/3 + .tf テンプレートエンジン + ARXML 木 + macro_processor binding)．`USE_PY_CFG=1` (デフォルト) で本実装が選択される．EK-RA6M5 用回帰テスト (`tests/test_integration_ek_ra6m5.py`) も整備． |
 
 ## ライセンス

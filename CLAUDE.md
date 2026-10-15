@@ -4,11 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-TOPPERS/ATK2 (AUTOSAR Kernel Version 2, SC1) ported from the original Nios2 distribution to **three boards**:
+TOPPERS/ATK2 (AUTOSAR Kernel Version 2, SC1) ported from the original Nios2 distribution to **four targets**:
 
 - **STMicroelectronics NUCLEO-H563ZI** (STM32H563ZI, Cortex-M33) — original ARM port; built with arm-none-eabi-gcc.
 - **Renesas EK-RA6M5** (R7FA6M5BH, Cortex-M33) — second port; built with ATfE clang 21.1.1 + Renesas FSP 6.4.0.
 - **HSB RH850F1K** (R7F701581, RH850 G3KH) — brought over from the ATK2-SC1 1.4.2 RH850 port (`../atk2_sc1_f1k`) with sources unchanged; built with Renesas CC-RH V2.08.00 under **Cygwin** make.
+- **RH850/F1KM-S1** (R7F701684, RH850 G3KH) — derived from the F1K target (clock tree, RLIN32 log output, TAUB hardware counter); same CC-RH + Cygwin toolchain. Verified running on hardware.
 
 The Nios2 target has been **removed** from this tree. The dispatcher and ARM port were modeled on TOPPERS/ASP3.
 
@@ -21,6 +22,7 @@ User-facing documentation (Japanese) is in:
 - [target/nucleo_h563zi_gcc/README.md](target/nucleo_h563zi_gcc/README.md) — NUCLEO-H563ZI board
 - [target/ek_ra6m5_llvm/README.md](target/ek_ra6m5_llvm/README.md) — EK-RA6M5 board
 - [target/hsbrh850f1k_ccrh/README.md](target/hsbrh850f1k_ccrh/README.md) — HSB RH850F1K board (CC-RH)
+- [target/rh850f1kms1_ccrh/README.md](target/rh850f1kms1_ccrh/README.md) — RH850/F1KM-S1 (CC-RH)
 - [cfg/cfg_py/README.md](cfg/cfg_py/README.md) — cfg Python port
 
 Read those before guessing. Source-level docs in `doc/` describe the original ATK2 SC1 kernel.
@@ -37,8 +39,8 @@ Locations (all use forward-slash MSYS-style for bash):
 | ATfE 21.1.1 (`clang.exe`) | `/c/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/toolchains/llvm_arm/ATfE-21.1.1-Windows-x86_64/bin/` | EK-RA6M5 |
 | `rascc.exe` (FSP generator) | `/c/Renesas/RA/sc_v2025-12_fsp_v6.4.0/eclipse/rascc.exe` | EK-RA6M5 (one-shot, post-clone) |
 | J-Link CLI | `/c/Program Files/SEGGER/JLink_V920/JLink.exe` (already on `PATH`) | EK-RA6M5 flashing |
-| Renesas CC-RH V2.08.00 | `/c/Program Files (x86)/Renesas Electronics/CS+/CC/CC-RH/V2.08.00/bin/` | HSB RH850F1K (`ccrh`, `rlink`) |
-| Cygwin bash/make/nm | `/c/cygwin64/bin/` | HSB RH850F1K — this target builds under **Cygwin**, not MSYS2 |
+| Renesas CC-RH V2.08.00 | `/c/Program Files (x86)/Renesas Electronics/CS+/CC/CC-RH/V2.08.00/bin/` | HSB RH850F1K / RH850F1KM-S1 (`ccrh`, `rlink`) |
+| Cygwin bash/make/nm | `/c/cygwin64/bin/` | Both RH850 targets — they build under **Cygwin**, not MSYS2 |
 
 One-liner to set up the shell for an EK-RA6M5 build (assumes you've
 already run `rascc --generate target/ek_ra6m5_llvm/fsp/configuration.xml`
@@ -58,8 +60,8 @@ MAKE='/c/Renesas/RA/e2studio_v2025-12_fsp_v6.4.0/eclipse/plugins/com.renesas.ide
 cd obj/obj_nucleo_h563zi && "$MAKE" -j4
 ```
 
-HSB RH850F1K builds from a **Cygwin** shell (its make, nm and coreutils are
-the ones the Makefile expects):
+The RH850 targets build from a **Cygwin** shell (its make, nm and coreutils
+are the ones the Makefile expects):
 
 ```sh
 C:/cygwin64/bin/bash.exe -lc 'export PATH="/cygdrive/c/Program Files (x86)/Renesas Electronics/CS+/CC/CC-RH/V2.08.00/bin:$PATH"; cd /cygdrive/c/.../atk2_sc1_shin/obj/obj_hsbrh850f1k_ccrh && make -j4'
@@ -81,7 +83,7 @@ make debug                # arm-none-eabi-gdb against localhost:3333
 
 Outputs land in the build directory: `atk2-sc1` (ELF), `atk2-sc1.srec`, `atk2-sc1.dump`, `atk2-sc1.map`, plus generator artifacts (`Os_Lcfg.c/h`, `Os_Cfg.h`, `cfg1_out.c`, `offset.h`).
 
-For HSB RH850F1K the equivalent is `cd obj/obj_hsbrh850f1k_ccrh && make -j4` (Cygwin shell, CC-RH on `PATH`); it produces `atk2-sc1.elf`, `atk2-sc1.srec`, `atk2-sc1.map` and additionally `Os_Lcfg_asm.asm` / `asm_config.inc`. There is no `make flash` / `make debug` for it.
+For the two RH850 targets the equivalent is `cd obj/obj_hsbrh850f1k_ccrh && make -j4` (or `obj/obj_rh850f1kms1_ccrh`) (Cygwin shell, CC-RH on `PATH`); it produces `atk2-sc1.elf`, `atk2-sc1.srec`, `atk2-sc1.map` and additionally `Os_Lcfg_asm.asm` / `asm_config.inc`. There is no `make flash` / `make debug` for it.
 
 `configure.py` regenerates `sample/Makefile` and template app files from `sample/` templates — it is rarely run for this target since `obj/obj_nucleo_h563zi/Makefile` is committed.
 
@@ -188,6 +190,18 @@ The `CFGNAME` make variable is the space-separated list of arxml basenames (with
   - H5 (TZEN=0): `TOPPERS_TZ_NS` → `EXC_RETURN = 0xFFFFFFBC`
   - RA6M5 (FSP "Flat Non-TrustZone Project", but Full Secure at runtime): `TOPPERS_TZ_S` → `EXC_RETURN = 0xFFFFFFFD`
 
+### RH850/F1KM-S1 (ccrh)
+
+Everything under "HSB RH850F1K (ccrh)" below applies here too (same toolchain, same PRC layer). What is specific to this target:
+
+- **Single-layer target directory.** Unlike F1K there is no `*_gcc` sibling: `target/rh850f1kms1_ccrh/` holds everything, and `Makefile.target` does not define `TARGETDIR_GCC`.
+- **Chip layer lives in `arch/v850_gcc/`** as `rh850_f1km.{c,h}` + `taub_hw_counter.c`, alongside the F1K files. They are selected by `KERNEL_COBJS` in `Makefile.target`, not by directory.
+- **TAUB, not TAUJ, and TAUB is 16-bit.** `TAUBCDR` / `TAUBCNT` take 16-bit accesses (`sil_wrh_mem` / `sil_reh_mem`) and `TAUBTS` / `TAUBTT` are 16-bit too (TAUJ used 32-bit / 8-bit). Because the counter is 16-bit, `OsCounterMaxAllowedValue` is 32000 (51.2 ms at the 625 kHz tick) — any runtime tick/cycle value must stay under it, which is why `target_test.h`'s `COUNTER_MIN_CYCLE` is ~50 ms here and ~1 s elsewhere.
+- **F1KM protection registers differ from F1K**: `CLMA3` (not `CLMA2`) and only `PPCMD0/8/9/10/11`. `PNO_*` is renumbered 0–13 with `PNO_NUM` = 14, so `write_protected_reg()`'s tables are F1KM-specific.
+- **PLL1 (`PLL1E/PLL1S/PLL1C`), not PLL.** Main OSC 20 MHz → PLL1 120 MHz; RLIN and TAUB run from PPLLCLK2 (40 MHz), so `CKSC_ILIN*` is at 0xfff8a300/0380 (F1K: 0xfff8a400/a800) and `CKSC_IPERI2S_*` is new.
+- **`CKSC_IPERI2S` (0xfff8a300/0380) is one clock domain shared by RLIN3n and TAUB0/TAUB1.** Set it once; do **not** add a separate TAUB step. The 0xfff8a280 pair that appears in some F1KM sources is unused and a protected write to it fails with `UC_PROTREGERROR` (this was the original bug here). `CKSC_ILIN*` are kept as aliases of 0xfff8a300/0380.
+- **`make OMIT_OPTIMIZATION=1` builds with `-Onothing`** for source-level stepping (the default is optimized, as elsewhere). `cfg1_out.c` is compiled optimized either way, because ccrh ignores `#pragma inline` without optimization and the emitted out-of-line inline functions then reference kernel symbols that the standalone `cfg1_out.elf` link cannot resolve.
+
 ### HSB RH850F1K (ccrh)
 
 - **Build from Cygwin (or Linux), not MSYS2** — the Makefile relies on Cygwin's `make`, `nm`, `cmp` and coreutils. With the Linux release of CC-RH on `PATH` the same Makefile builds natively on Linux; `arch/v850_ccrh/Makefile.prc` locates `rhs4n.lib` from `which ccrh` (`CCRH_ROOT`, converted with `cygpath -w` on Cygwin) and passes its absolute, double-quoted path to `-library=`, so `HLNK_DIR` is not needed on either OS; pass `CCRH_ROOT=` if `ccrh` is not on `PATH`. rlink resolves relative `-library=` paths only against cwd/`HLNK_DIR`, and Linux rlink does not treat `\` as a separator. Objects use the `.obj` extension, assembly sources are `.asm`, and linking/archiving both go through `rlink` (`-output=`, `-form=stype`, `-form=library=u`); there is no `objcopy`/`objdump` step.
@@ -214,6 +228,11 @@ The `CFGNAME` make variable is the space-separated list of arxml basenames (with
 - **ICU IELSR.IR must be cleared** in each ISR after handling, otherwise the interrupt re-enters in a tight loop. Wrappers in `target_config.c` and `target_hw_counter.c` call `R_BSP_IrqStatusClear()` accordingly.
 
 ## 開発項目
+- RH850/F1KM-S1 (R7F701684) 対応を入れる **(ビルドまで完了; 実機未確認)**
+  - HSB RH850F1K 依存部をベースに，クロック・RLIN32・TAUB を差し替え
+  - `target/rh850f1kms1_ccrh/` (単層) + `arch/v850_gcc/{rh850_f1km.*,taub_hw_counter.c}`
+  - ビルドディレクトリは `obj/obj_rh850f1kms1_ccrh/`
+  - 詳細は [`target/rh850f1kms1_ccrh/README.md`](target/rh850f1kms1_ccrh/README.md)
 - HSB RH850F1K (R7F701581) を Cygwin 上の make でビルド可能にする **(完了)**
   - 依存部ファイルは `../atk2_sc1_f1k` からソース無変更で持ち込む
   - CS+ でのビルド，`configure.py` 対応，書き込み・実行は対象外

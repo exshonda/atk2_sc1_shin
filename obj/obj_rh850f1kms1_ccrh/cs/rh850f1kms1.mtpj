@@ -1,0 +1,167 @@
+﻿<CubeSuiteProject PackageVersion="V8.16.00  [19 Jun 2026]">
+  <ProductVersion>9.16.00.00</ProductVersion>
+  <Class Guid="68f4a651-b9cd-473b-a595-b00447132ffa">
+    <Instance Guid="00000000-0000-0000-0000-000000000000">
+      <FormatVersion>2.0</FormatVersion>
+      <FileVersion>9.16</FileVersion>
+      <ProjectGuid>03909090-733c-455c-a448-a3d6c982c497</ProjectGuid>
+      <ProjectItemGuid>efc74da0-0efb-4b40-b2db-2c5d15717bc8</ProjectItemGuid>
+      <FileCategoryGuid>9b0c849b-f370-444d-8106-c66f5856d5d8</FileCategoryGuid>
+      <Property>fb98844b-2c27-4275-9804-f6e63e204da0</Property>
+      <ActiveProjectGuid>03909090-733c-455c-a448-a3d6c982c497</ActiveProjectGuid>
+    </Instance>
+    <Instance Guid="ff459d80-3c76-4de6-b320-0281c1e9876c">
+      <Name>ダウンロード・ファイル</Name>
+      <Type>Category</Type>
+      <TreeImageGuid>0a10ce0a-16e1-4965-a86e-a233726f2029</TreeImageGuid>
+      <ParentItem>9b0c849b-f370-444d-8106-c66f5856d5d8</ParentItem>
+    </Instance>
+  </Class>
+  <Class Guid="fb98844b-2c27-4275-9804-f6e63e204da0">
+    <Instance Guid="fb98844b-2c27-4275-9804-f6e63e204da0">
+      <TypeOfStorageOfUserSettings>UserMtudFile</TypeOfStorageOfUserSettings>
+      <UseStandardLicenseOnly>True</UseStandardLicenseOnly>
+      <MemoCount>0</MemoCount>
+    </Instance>
+  </Class>
+  <Class Guid="8fb9c1f6-d351-4d10-8d99-bf5b3015b84c">
+    <Instance Guid="00000000-0000-0000-0000-000000000000">
+      <UsingPlatformGuid>abbea355-687c-4c5e-9b3d-f87bf6e0096d</UsingPlatformGuid>
+      <UsingPlatformTypeGuid>ad4033fe-5c64-4017-8723-5539a6e004f7</UsingPlatformTypeGuid>
+    </Instance>
+  </Class>
+  <Class Guid="c325714f-8f51-484b-9e96-b4b59c0fb263">
+    <Instance Guid="c325714f-8f51-484b-9e96-b4b59c0fb263">
+      <DeviceManager>096f2041-c115-4158-959e-885938314c77</DeviceManager>
+    </Instance>
+  </Class>
+  <Class Guid="096f2041-c115-4158-959e-885938314c77">
+    <Instance Guid="096f2041-c115-4158-959e-885938314c77">
+      <DataFormatVersion>1.0</DataFormatVersion>
+    </Instance>
+    <Instance Guid="1268cda7-f509-4a4f-8552-a413adafabfb">
+      <DeviceName>R7F701684</DeviceName>
+      <MemoCount>0</MemoCount>
+      <ZeroBase>True</ZeroBase>
+      <ResetVectorAddress1>0</ResetVectorAddress1>
+    </Instance>
+  </Class>
+  <Class Guid="c21e0010-0644-48ec-a5d2-2b06674b0390">
+    <Instance Guid="c21e0010-0644-48ec-a5d2-2b06674b0390">
+      <IsStructuredNaming>True</IsStructuredNaming>
+    </Instance>
+  </Class>
+  <Class Guid="c3835e31-dea3-4c93-b02b-d2db997f7630">
+    <Instance Guid="c3835e31-dea3-4c93-b02b-d2db997f7630">
+      <BuildToolManager>b367b32a-23d8-4305-b5ba-1b16a7a36b94</BuildToolManager>
+    </Instance>
+  </Class>
+  <Class Guid="b367b32a-23d8-4305-b5ba-1b16a7a36b94">
+    <Instance Guid="b367b32a-23d8-4305-b5ba-1b16a7a36b94">
+      <DataFormatVersion>1.0</DataFormatVersion>
+      <BuildModeCount>1</BuildModeCount>
+      <BuildMode0>RABlAGYAYQB1AGwAdABCAHUAaQBsAGQA</BuildMode0>
+      <BatchBuildFlag0>False</BatchBuildFlag0>
+      <CurrentBuildMode>DefaultBuild</CurrentBuildMode>
+      <LastDeviceChangedCounter>0</LastDeviceChangedCounter>
+    </Instance>
+    <Instance Guid="f7bf3c00-4020-4f2c-b7b7-1c8768e29774">
+      <BuildMode-DefaultValue>DefaultBuild</BuildMode-DefaultValue>
+      <CommandsExecutedProjectBuilding-DefaultValue />
+      <Memo-DefaultValue />
+      <OutputMessageFormat-DefaultValue>%TargetFiles%</OutputMessageFormat-DefaultValue>
+      <CommandsExecutedProjectCleaning-DefaultValue />
+      <FormatBuildOptionList-DefaultValue>%TargetFiles% : %Program% %Options%</FormatBuildOptionList-DefaultValue>
+      <SetAllBuildModeValue-DefaultValue>False</SetAllBuildModeValue-DefaultValue>
+      <TemporaryFolder-DefaultValue />
+      <PreBuildCommands-DefaultValue />
+      <PostBuildCommands-DefaultValue />
+      <IsLockedByUser>False</IsLockedByUser>
+      <TimeTagModified--0>-8584095483260338619</TimeTagModified--0>
+      <CommandsExecutedProjectBuilding-0 />
+      <CommandsExecutedProjectCleaning-0 />
+    </Instance>
+    <Instance Guid="00000000-0000-0000-0000-000000000000">
+      <TimeTagModified--0>-8584095483260338619</TimeTagModified--0>
+      <BuildMode-0>DefaultBuild</BuildMode-0>
+      <Memo-0 />
+      <OutputMessageFormat-0>%TargetFiles%</OutputMessageFormat-0>
+      <FormatBuildOptionList-0>%TargetFiles% : %Program% %Options%</FormatBuildOptionList-0>
+      <SetAllBuildModeValue-0>False</SetAllBuildModeValue-0>
+      <TemporaryFolder-0 />
+      <PreBuildCommands-0 />
+      <PostBuildCommands-0 />
+    </Instance>
+  </Class>
+  <Class Guid="8b5af363-dcc2-48e6-919c-6cdb80d50173">
+    <Instance Guid="8b5af363-dcc2-48e6-919c-6cdb80d50173">
+      <DataFormatVersionPlugin>1.0</DataFormatVersionPlugin>
+      <DataFormatVersionDebugger>1.0</DataFormatVersionDebugger>
+    </Instance>
+  </Class>
+  <Class Guid="932085a2-9361-4df9-a3f7-12e6de7681a8">
+    <Instance Guid="932085a2-9361-4df9-a3f7-12e6de7681a8">
+      <DebugToolManager>f2aacdac-89aa-4f89-8fbf-25090bc24c51</DebugToolManager>
+    </Instance>
+  </Class>
+  <Class Guid="e4df8d71-236e-4af2-aaea-56345a08da25">
+    <Instance Guid="d0534c29-4366-4056-9e09-bb28c173fcf6">
+      <DeviceChangedCounter>0</DeviceChangedCounter>
+      <DeviceName>R7F701684</DeviceName>
+      <DebuggerProperty-EssentialProperty-Clock-MainClockFrequency>320000</DebuggerProperty-EssentialProperty-Clock-MainClockFrequency>
+      <DebuggerProperty-EssentialProperty-Clock-SelectTimerTraceClockFrequency>SelectCpuClockFrequency</DebuggerProperty-EssentialProperty-Clock-SelectTimerTraceClockFrequency>
+      <DebuggerProperty-EssentialProperty-Clock-UnitOfTimerTraceClockFrequency>MHz</DebuggerProperty-EssentialProperty-Clock-UnitOfTimerTraceClockFrequency>
+      <DebuggerProperty-EssentialProperty-Clock-TimerTraceClockFrequency>8000000</DebuggerProperty-EssentialProperty-Clock-TimerTraceClockFrequency>
+      <DebuggerProperty-EssentialProperty-Configuration-UseSimulatorConfigurationFile>No</DebuggerProperty-EssentialProperty-Configuration-UseSimulatorConfigurationFile>
+      <DebuggerProperty-EssentialProperty-Configuration-SimulatorConfigurationFile />
+      <DebuggerProperty-DownloadProperty-DebugInformation-DownloadFiles-Length>0</DebuggerProperty-DownloadProperty-DebugInformation-DownloadFiles-Length>
+      <DebuggerProperty-DownloadProperty-DebugInformation-CpuReset>True</DebuggerProperty-DownloadProperty-DebugInformation-CpuReset>
+      <DebuggerProperty-DownloadProperty-DebugInformation-FlashErase>False</DebuggerProperty-DownloadProperty-DebugInformation-FlashErase>
+      <DebuggerProperty-DownloadProperty-DebugInformation-EventCorrection>SuspendEvent</DebuggerProperty-DownloadProperty-DebugInformation-EventCorrection>
+      <DebuggerProperty-DownloadProperty-DebugInformation-SkipStartup>True</DebuggerProperty-DownloadProperty-DebugInformation-SkipStartup>
+      <DebuggerProperty-DownloadProperty-DebugInformation-MainSymbol>XwBtAGEAaQBuAA==</DebuggerProperty-DownloadProperty-DebugInformation-MainSymbol>
+      <DebuggerProperty-DownloadProperty-DebugInformation-MaxLoaderMemorySize>500</DebuggerProperty-DownloadProperty-DebugInformation-MaxLoaderMemorySize>
+      <DebuggerProperty-DownloadProperty-DebugInformation-SearchGlobalVariablesOutsideCurrentScope>False</DebuggerProperty-DownloadProperty-DebugInformation-SearchGlobalVariablesOutsideCurrentScope>
+      <DebuggerProperty-DownloadProperty-None-DefaultDownloadItemSupported>False</DebuggerProperty-DownloadProperty-None-DefaultDownloadItemSupported>
+      <DebuggerProperty-OptionalProperty-Register-UpdateDisplayInExecutionForPC>No</DebuggerProperty-OptionalProperty-Register-UpdateDisplayInExecutionForPC>
+      <DebuggerProperty-OptionalProperty-Register-UpdateIntervalForPC>500</DebuggerProperty-OptionalProperty-Register-UpdateIntervalForPC>
+      <DebuggerProperty-OptionalProperty-Memory-MemoryMappings-Length>0</DebuggerProperty-OptionalProperty-Memory-MemoryMappings-Length>
+      <DebuggerProperty-OptionalProperty-Memory-PermitWriteProhibitedArea>False</DebuggerProperty-OptionalProperty-Memory-PermitWriteProhibitedArea>
+      <DebuggerProperty-OptionalProperty-AccessMemory-UpdateDisplayInExecution>Yes</DebuggerProperty-OptionalProperty-AccessMemory-UpdateDisplayInExecution>
+      <DebuggerProperty-OptionalProperty-AccessMemory-UpdateInterval>500</DebuggerProperty-OptionalProperty-AccessMemory-UpdateInterval>
+      <DebuggerProperty-OptionalProperty-Trace-UseTrace>No</DebuggerProperty-OptionalProperty-Trace-UseTrace>
+      <DebuggerProperty-OptionalProperty-Trace-TraceBranchPCAndDataAccess>True</DebuggerProperty-OptionalProperty-Trace-TraceBranchPCAndDataAccess>
+      <DebuggerProperty-OptionalProperty-Trace-TraceSoftwareTrace>False</DebuggerProperty-OptionalProperty-Trace-TraceSoftwareTrace>
+      <DebuggerProperty-OptionalProperty-Trace-TraceDBCP>True</DebuggerProperty-OptionalProperty-Trace-TraceDBCP>
+      <DebuggerProperty-OptionalProperty-Trace-TraceDBTAG>True</DebuggerProperty-OptionalProperty-Trace-TraceDBTAG>
+      <DebuggerProperty-OptionalProperty-Trace-TraceDBPUSH>True</DebuggerProperty-OptionalProperty-Trace-TraceDBPUSH>
+      <DebuggerProperty-OptionalProperty-Trace-ClearTraceMemory>Yes</DebuggerProperty-OptionalProperty-Trace-ClearTraceMemory>
+      <DebuggerProperty-OptionalProperty-Trace-TraceMode>Free</DebuggerProperty-OptionalProperty-Trace-TraceMode>
+      <DebuggerProperty-OptionalProperty-Trace-AddUptimeTag>No</DebuggerProperty-OptionalProperty-Trace-AddUptimeTag>
+      <DebuggerProperty-OptionalProperty-Trace-TraceMemorySize>4096</DebuggerProperty-OptionalProperty-Trace-TraceMemorySize>
+      <DebuggerProperty-OptionalProperty-Trace-TraceRate>0</DebuggerProperty-OptionalProperty-Trace-TraceRate>
+      <DebuggerProperty-OptionalProperty-Timer-UseTimer>No</DebuggerProperty-OptionalProperty-Timer-UseTimer>
+      <DebuggerProperty-OptionalProperty-Coverage-UseCoverage>No</DebuggerProperty-OptionalProperty-Coverage-UseCoverage>
+      <DebuggerProperty-OptionalProperty-Coverage-ReuseCoverageData>No</DebuggerProperty-OptionalProperty-Coverage-ReuseCoverageData>
+      <DebuggerProperty-OptionalProperty-Coverage-CoverageAreaAddress>1048576</DebuggerProperty-OptionalProperty-Coverage-CoverageAreaAddress>
+      <DebuggerProperty-OptionalProperty-Step-SectionSkipStep>False</DebuggerProperty-OptionalProperty-Step-SectionSkipStep>
+      <DebuggerProperty-OptionalProperty-Step-SelectSectionList-Length>0</DebuggerProperty-OptionalProperty-Step-SelectSectionList-Length>
+      <DebuggerProperty-ExtraAreaProperty-ExtraArea-ExtraInformation-OptionByte0>4196925391</DebuggerProperty-ExtraAreaProperty-ExtraArea-ExtraInformation-OptionByte0>
+      <DebuggerProperty-ExtraAreaProperty-ExtraArea-ExtraInformation-OptionByte1>4294966783</DebuggerProperty-ExtraAreaProperty-ExtraArea-ExtraInformation-OptionByte1>
+      <DebuggerProperty-HookProperty-HookTransaction-Downloading-Length>0</DebuggerProperty-HookProperty-HookTransaction-Downloading-Length>
+      <DebuggerProperty-HookProperty-HookTransaction-Downloaded-Length>0</DebuggerProperty-HookProperty-HookTransaction-Downloaded-Length>
+      <DebuggerProperty-HookProperty-HookTransaction-Reset-Length>0</DebuggerProperty-HookProperty-HookTransaction-Reset-Length>
+      <DebuggerProperty-HookProperty-HookTransaction-Going-Length>0</DebuggerProperty-HookProperty-HookTransaction-Going-Length>
+      <DebuggerProperty-HookProperty-HookTransaction-Broke-Length>0</DebuggerProperty-HookProperty-HookTransaction-Broke-Length>
+      <DebuggerProperty-HookProperty-HookTransaction-Connected-Length>0</DebuggerProperty-HookProperty-HookTransaction-Connected-Length>
+      <DebuggerProperty-HookProperty-HookTransaction-Disconnecting-Length>0</DebuggerProperty-HookProperty-HookTransaction-Disconnecting-Length>
+      <Debugger-DebugTarget-ProcessorElementNumber>1</Debugger-DebugTarget-ProcessorElementNumber>
+      <Debugger-DebugTarget-SubID>0</Debugger-DebugTarget-SubID>
+    </Instance>
+  </Class>
+  <Class Guid="1671e1b6-fdf9-42ca-9c4e-abbcbbeffadd">
+    <Instance Guid="1671e1b6-fdf9-42ca-9c4e-abbcbbeffadd">
+      <DownloadFilesCategoryGuid>ff459d80-3c76-4de6-b320-0281c1e9876c</DownloadFilesCategoryGuid>
+    </Instance>
+  </Class>
+</CubeSuiteProject>
