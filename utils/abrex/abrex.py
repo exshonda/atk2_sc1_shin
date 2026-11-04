@@ -177,6 +177,14 @@ def _parse_xml(file_path):
     return root
 
 
+def _to_text(value):
+    # YAML booleans must be written as "true"/"false" (as abrex.rb does),
+    # not Python's "True"/"False".
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+
 def _add_subelem(parent, tag, attrib=None, text=None):
     if attrib is None:
         attrib = {}
@@ -469,7 +477,7 @@ def _yaml_to_xml_make_container(parent, s_short_name, h_param_info, s_path):
                           attrib={"DEST": _State.dest[s_param_name]},
                           text="{0}/{1}/{2}".format(
                               s_path, def_ref, s_param_name))
-            _add_subelem(xml_p, "VALUE", text=str(s_val))
+            _add_subelem(xml_p, "VALUE", text=_to_text(s_val))
 
     # 次に参照型を生成 (AUTOSAR スキーマ制約)
     for s_param_name, sah_value in h_param_info.items():
@@ -504,7 +512,7 @@ def _yaml_to_xml_make_container(parent, s_short_name, h_param_info, s_path):
                         if s_p in h_val:
                             _add_subelem(xml_iref, s_p,
                                           attrib={"DEST": s_d},
-                                          text=str(h_val[s_p]))
+                                          text=_to_text(h_val[s_p]))
 
         elif s_param_name in (_State.reference_param or []):
             if h_check[XML_REFER] is None:
@@ -524,11 +532,11 @@ def _yaml_to_xml_make_container(parent, s_short_name, h_param_info, s_path):
                                   attrib={
                                       "DEST": _State.foreign_ref_type[
                                           s_param_name]},
-                                  text=str(s_val))
+                                  text=_to_text(s_val))
                 else:
                     _add_subelem(xml_p, "VALUE-REF",
                                   attrib={"DEST": "ECUC-CONTAINER-VALUE"},
-                                  text=str(s_val))
+                                  text=_to_text(s_val))
 
     # 最後にサブコンテナを生成
     for s_param_name, sah_value in h_param_info.items():
